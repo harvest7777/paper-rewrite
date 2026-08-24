@@ -1,4 +1,3 @@
-notes/*
 baseline/
 build-baseline/
-.venv/*
+.venv*
