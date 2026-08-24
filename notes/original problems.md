@@ -1,12 +1,3 @@
-% ============= Initial tasks=======================
-% Done: 1. learn how to use VS Code + Cline + OpenRouter API  ($10- $20 initial money )
-% watch youtube
-% 2-3 hours
-
-% Done: 2.1 You should read the draft pdf in the old branch of git repo 
- % https://github.com/chunhualiao/Rapids2-CompilerGPT-dot-optimization/blob/liao-old/graphviz_performance_analysis.pdf 
- % 2 hours
- 
 %====================Where to find things========================
 % 1. git repo for this paper
 % https://github.com/chunhualiao/Rapids2-CompilerGPT-dot-optimization

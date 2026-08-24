@@ -1,0 +1,239 @@
+digraph G {
+	graph [bb="0,0,641.9,275.61",
+		bgcolor=transparent,
+		compound=true,
+		nodesep=0.4,
+		rankdir=LR,
+		ranksep=.4,
+		remincross=true
+	];
+	node [fontsize=8,
+		label="\N",
+		shape=box
+	];
+	edge [arrowsize=0.7,
+		fontsize=8
+	];
+	subgraph clusterAuto {
+		graph [bb="132.28,86.608,633.9,267.61",
+			color=black,
+			fontname=Arial,
+			fontsize=8,
+			label=< <TABLE BORDER="0" ><TR><TD PORT="E"></TD><TD BORDER="1" SIDES="B"> Auto </TD><TD PORT="E"></TD></TR></TABLE> >,
+			lheight=0.27,
+			lp="383.09,253.73",
+			lwidth=0.59,
+			style=rounded
+		];
+		subgraph clusterDunkel {
+			graph [bb="314.9,94.608,625.9,231.61",
+				color=black,
+				fontname=Arial,
+				fontsize=8,
+				label=< <TABLE BORDER="0" ><TR><TD PORT="E"></TD><TD BORDER="1" SIDES="B"> Dunkel </TD><TD PORT="E"></TD></TR></TABLE> >,
+				lheight=0.27,
+				lp="470.4,217.73",
+				lwidth=0.71,
+				style=rounded
+			];
+			structDefaultDunkel	[fillcolor=black,
+				fixedsize=true,
+				fontcolor=white,
+				fontname=Arial,
+				height=0.5,
+				label=< <TABLE BORDER="0"><TR><TD PORT="NW"></TD> <TD PORT="N"></TD> <TD PORT="NE"></TD></TR><TR><TD PORT="W"> </TD> <TD BORDER="0" ALIGN="CENTER"> <FONT COLOR="white"> </FONT>  </TD> <TD PORT="E"></TD></TR><TR><TD PORT="SW"></TD><TD PORT="S"></TD><TD PORT="SE"></TD></TR></TABLE> >,
+				pos="340.9,137.61",
+				shape=circle,
+				style=filled,
+				width=0.5];
+			structNichtsErkannt	[BORDER=1,
+				color=black,
+				fontname=Arial,
+				height=0.90625,
+				label=< <TABLE STYLE="rounded" BORDER="0" CELLBORDER="0">
+<TR><TD PORT="NW"></TD><TD PORT="N"></TD><TD PORT="NE"></TD></TR>
+<TR><TD PORT="W"></TD> <TD BORDER="1" SIDES="B">NichtsErkannt</TD><TD PORT="E"></TD></TR>
+<TR><TD COLSPAN="3" ALIGN="LEFT">Entry:<br ALIGN="LEFT"/>lic...</TD></TR>
+<TR><TD PORT="SW"></TD><TD PORT="S"></TD><TD PORT="SE"></TD></TR>
+</TABLE> >,
+				penwidth=1,
+				pos="437.15,137.61",
+				style=rounded,
+				width=1.2153];
+			structDefaultDunkel -> structNichtsErkannt	[fontname=Arial,
+				label=<  >,
+				lp="376.15,142.48",
+				pos="e,393.1,137.61 359.19,137.61 366.51,137.61 375.47,137.61 384.65,137.61",
+				style=dotted];
+			structEtwasErkannt	[BORDER=1,
+				color=black,
+				fontname=Arial,
+				height=0.90625,
+				label=< <TABLE STYLE="rounded" BORDER="0" CELLBORDER="0">
+<TR><TD PORT="NW"></TD><TD PORT="N"></TD><TD PORT="NE"></TD></TR>
+<TR><TD PORT="W"></TD> <TD BORDER="1" SIDES="B">EtwasErkannt</TD><TD PORT="E"></TD></TR>
+<TR><TD COLSPAN="3" ALIGN="LEFT">Entry:<br ALIGN="LEFT"/>lic...</TD></TR>
+<TR><TD PORT="SW"></TD><TD PORT="S"></TD><TD PORT="SE"></TD></TR>
+</TABLE> >,
+				penwidth=1,
+				pos="574.15,135.61",
+				style=rounded,
+				width=1.2153];
+			structNichtsErkannt -> structEtwasErkannt	[color=black,
+				fontcolor=black,
+				fontname=Arial,
+				label=<evP...>,
+				lp="505.65,138.73",
+				pos="e,530.24,133.8 481.34,134.5 486.25,134.23 491.18,134.01 495.9,133.86 504.33,133.58 513.29,133.55 521.99,133.66"];
+			structEtwasErkannt -> structNichtsErkannt	[color=black,
+				fontcolor=black,
+				fontname=Arial,
+				label=<evP...>,
+				lp="505.65,149.95",
+				pos="e,481.04,144.06 530.03,143.07 525.11,143.7 520.15,144.24 515.4,144.61 506.96,145.26 498,145.17 489.29,144.66"];
+			structEtwasErkannt -> structEtwasErkannt	[color=black,
+				fontcolor=black,
+				fontname=Arial,
+				label=<evE...>,
+				lp="574.15,202.11",
+				pos="e,586.74,168.58 561.56,168.58 560.19,183.87 564.38,197.23 574.15,197.23 582.09,197.23 586.34,188.41 586.92,176.9"];
+		}
+		structHell	[BORDER=1,
+			color=black,
+			fontname=Arial,
+			height=0.90625,
+			label=< <TABLE STYLE="rounded" BORDER="0" CELLBORDER="0">
+<TR><TD PORT="NW"></TD><TD PORT="N"></TD><TD PORT="NE"></TD></TR>
+<TR><TD PORT="W"></TD> <TD BORDER="1" SIDES="B">Hell</TD><TD PORT="E"></TD></TR>
+<TR><TD COLSPAN="3" ALIGN="LEFT">Entry:<br ALIGN="LEFT"/>lic...</TD></TR>
+<TR><TD PORT="SW"></TD><TD PORT="S"></TD><TD PORT="SE"></TD></TR>
+</TABLE> >,
+			penwidth=1,
+			pos="263.9,143.61",
+			style=rounded,
+			width=0.75];
+		structHell:W -> structDefaultDunkel	[color=black,
+			fontcolor=black,
+			fontname=Arial,
+			labeldistance=2.0,
+			lhead=clusterDunkel,
+			pos="e,314.9,162.45 247.15,156.36 238.31,156.36 241.74,170.14 248.15,176.23 261.92,189.33 272.95,182.46 290.9,176.23 296.94,174.14 302.81,\
+170.95 308.25,167.29",
+			tail_lp="230.71,167.74",
+			taillabel=<evE...>];
+		structDefaultDunkel -> structHell:SE	[color=black,
+			fontcolor=black,
+			fontname=Arial,
+			head_lp="299.27,111.67",
+			headlabel=<evE...>,
+			labeldistance=2.0,
+			ltail=clusterDunkel,
+			pos="e,280.65,118.98 314.9,126.07 307,123.17 297.97,120.57 288.99,119.5"];
+		structDefaultAuto	[fillcolor=black,
+			fixedsize=true,
+			fontcolor=white,
+			fontname=Arial,
+			height=0.5,
+			label=< <TABLE BORDER="0"><TR><TD PORT="NW"></TD> <TD PORT="N"></TD> <TD PORT="NE"></TD></TR><TR><TD PORT="W"> </TD> <TD BORDER="0" ALIGN="CENTER"> <FONT COLOR="white"> </FONT>  </TD> <TD PORT="E"></TD></TR><TR><TD PORT="SW"></TD><TD PORT="S"></TD><TD PORT="SE"></TD></TR></TABLE> >,
+			pos="158.28,143.61",
+			shape=circle,
+			style=filled,
+			width=0.5];
+		structDefaultAuto -> structHell	[fontname=Arial,
+			label=<  >,
+			lp="211.78,148.48",
+			pos="e,236.42,143.61 176.39,143.61 190.42,143.61 210.73,143.61 228.15,143.61",
+			style=dotted];
+	}
+	structDefaultroot	[fillcolor=black,
+		fixedsize=true,
+		fontcolor=white,
+		fontname=Arial,
+		height=0.5,
+		label=< <TABLE BORDER="0"><TR><TD PORT="NW"></TD> <TD PORT="N"></TD> <TD PORT="NE"></TD></TR><TR><TD PORT="W"> </TD> <TD BORDER="0" ALIGN="CENTER"> <FONT COLOR="white"> </FONT>  </TD> <TD PORT="E"></TD></TR><TR><TD PORT="SW"></TD><TD PORT="S"></TD><TD PORT="SE"></TD></TR></TABLE> >,
+		pos="18,89.608",
+		shape=circle,
+		style=filled,
+		width=0.5];
+	structC	[color=black,
+		fixedsize=true,
+		fontname=Arial,
+		height=0.2,
+		label=<  >,
+		pos="77.7,89.608",
+		shape=diamond,
+		width=0.2];
+	structDefaultroot -> structC	[fontname=Arial,
+		label=<  >,
+		lp="53.25,94.483",
+		pos="e,69.91,89.608 36.312,89.608 44.336,89.608 53.785,89.608 61.526,89.608",
+		style=dotted];
+	structC -> structDefaultAuto	[color=black,
+		fontcolor=black,
+		fontname=Arial,
+		labeldistance=2.0,
+		lhead=clusterAuto,
+		pos="e,132.28,126.43 82.49,92.212 90.265,97.556 108.69,110.22 125.3,121.64",
+		tail_lp="102.22,95.513",
+		taillabel=<&#91;au...>];
+	structParty	[BORDER=1,
+		color=red,
+		fontname=Arial,
+		height=0.90625,
+		label=< <TABLE STYLE="rounded" BORDER="0" CELLBORDER="0">
+<TR><TD PORT="NW"></TD><TD PORT="N"></TD><TD PORT="NE"></TD></TR>
+<TR><TD PORT="W"></TD> <TD BORDER="1" SIDES="B">Party</TD><TD PORT="E"></TD></TR>
+<TR><TD COLSPAN="3" ALIGN="LEFT">Entry:<br ALIGN="LEFT"/>lic...</TD></TR>
+<TR><TD PORT="SW"></TD><TD PORT="S"></TD><TD PORT="SE"></TD></TR>
+</TABLE> >,
+		penwidth=1,
+		pos="158.28,35.608",
+		style=rounded,
+		width=0.78819];
+	structC -> structParty	[color=black,
+		fontcolor=black,
+		fontname=Arial,
+		label=<&#91;el...>,
+		lp="107.4,78.527",
+		pos="e,129.65,54.594 82.49,87.003 89.893,81.915 106.95,70.193 122.91,59.226"];
+	structDefaultAuto -> structParty:N	[color=black,
+		fontcolor=black,
+		fontname=Arial,
+		head_lp="149.82,91.656",
+		headlabel=<evP...>,
+		labeldistance=2.0,
+		ltail=clusterAuto,
+		pos="s,158.28,63.233 158.28,74.577 158.28,86.586 158.28,98.946 158.28,109.78"];
+	structFinale	[fillcolor=black,
+		fixedsize=true,
+		fontname=Arial,
+		height=0.31111,
+		label=< >,
+		pos="263.9,59.608",
+		shape=doublecircle,
+		style=filled,
+		width=0.31111];
+	structDefaultAuto -> structFinale	[color=black,
+		fontcolor=black,
+		fontname=Arial,
+		head_lp="245.39,83.572",
+		headlabel=<evE...>,
+		labeldistance=2.0,
+		ltail=clusterAuto,
+		pos="e,254.65,65.843 228.16,86.612 231.11,84.238 234.03,81.895 236.9,79.608 240.48,76.754 244.38,73.719 248.04,70.898"];
+	structParty:S -> structDefaultAuto	[color=blue,
+		fontcolor=blue,
+		fontname=Arial,
+		labeldistance=2.0,
+		lhead=clusterAuto,
+		pos="s,172.45,112.93 176.64,102.46 180.77,91.582 184.55,79.65 186.65,68.233 191.42,42.336 204.94,27.928 186.65,8.9829 177.89,-0.095829 \
+158.28,-4.6361 158.28,7.9829",
+		tail_lp="171.34,92.964",
+		taillabel=<evA...>];
+	structParty -> structFinale	[color=blue,
+		fontcolor=blue,
+		fontname=Arial,
+		label=<evE...>,
+		lp="211.78,54.633",
+		pos="e,252.52,57.204 187.04,42.039 205.25,46.257 228.56,51.654 244.5,55.346"];
+}
