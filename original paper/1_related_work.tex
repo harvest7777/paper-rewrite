@@ -1,0 +1,21 @@
+\section{Related Work}
+\label{sec:related}
+
+Graph visualization algorithms have been extensively studied, with foundational 
+work by \cite{gansner1993technique} establishing the DOT algorithm for 
+hierarchical graph layout. Parallel optimization of graph algorithms has been 
+explored through GPU acceleration~\cite{merrill2012scalable} and distributed computing approaches~\cite{shun2013ligra}. The application of artificial intelligence to 
+performance optimization represents a rapidly evolving field, with machine 
+learning approaches for automatic parallelization \cite{cummins2017end} and 
+AI-driven compiler optimization \cite{ashouri2018survey} demonstrating 
+significant potential for intelligent optimization strategies. OpenMP 
+performance characteristics on ARM architectures have received increased 
+attention with Apple's M1 processor, where research by 
+\cite{jin2011high} revealed architecture-specific optimization 
+opportunities that differ from traditional x86 approaches, particularly 
+regarding unified memory architecture considerations. The DOT layout algorithm 
+\cite{gansner1993technique} proceeds in four phases: (1) ranking nodes, 
+(2) minimizing edge crossings, (3) coordinate assignment, and (4) final layout 
+refinement, with each phase consisting of computational kernels such as rank 
+assignment, transpose operations, and crossing minimization that form the basis 
+of our optimization study.

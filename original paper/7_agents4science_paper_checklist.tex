@@ -1,0 +1,55 @@
+\section*{Agents4Science Paper Checklist}
+
+\begin{enumerate}
+
+\item {\bf Claims}
+    \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
+    \item[] Answer: \textbf{Yes}
+    \item[] Justification: The abstract and introduction clearly state our contributions: AI-driven OpenMP optimization achieving 3.78× peak speedup, comprehensive performance analysis on Apple M1, and statistical validation methodology. These claims are supported by experimental results in Section 4.
+
+\item {\bf Limitations}
+    \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
+    \item[] Answer: \textbf{Yes}
+    \item[] Justification: Section 6 discusses limitations including architecture-specific results (Apple M1), graph size constraints, and the need for human oversight in production deployments. The Responsible AI Statement also addresses potential risks and mitigation strategies.
+
+\item {\bf Theory assumptions and proofs}
+    \item[] Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (and correct) proof?
+    \item[] Answer: \textbf{NA}
+    \item[] Justification: This paper focuses on empirical performance optimization rather than theoretical contributions. All claims are supported by experimental validation rather than formal proofs.
+
+\item {\bf Experimental result reproducibility}
+    \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper (regardless of whether the code and data are provided or not)?
+    \item[] Answer: \textbf{Yes}
+    \item[] Justification: Section 4.1 provides complete hardware specifications, software versions, and experimental protocols. Section 5.5 documents AI model versions and prompt templates. The Reproducibility Statement details all necessary information for replication.
+
+\item {\bf Open access to data and code}
+    \item[] Question: Does the paper provide open access to the data and code, with sufficient instructions to faithfully reproduce the main experimental results, as described in supplemental material?
+    \item[] Answer: \textbf{Yes}
+    \item[] Justification: All source code, experimental data, and analysis scripts are available. The paper includes detailed compilation instructions and complete experimental protocols to enable independent reproduction.
+
+\item {\bf Experimental setting/details}
+    \item[] Question: Does the paper specify all the training and test details (e.g., data splits, hyperparameters, how they were chosen, type of optimizer, etc.) necessary to understand the results?
+    \item[] Answer: \textbf{Yes}
+    \item[] Justification: Section 3.1.3 specifies the comprehensive graph test suite, Section 3.1.4 details statistical validation methodology with 30 runs per configuration, and Section 4.1 provides complete experimental environment specifications.
+
+\item {\bf Experiment statistical significance}
+    \item[] Question: Does the paper report error bars suitably and correctly defined or other appropriate information about the statistical significance of the experiments?
+    \item[] Answer: \textbf{Yes}
+    \item[] Justification: All performance results include error bars representing standard deviations from 30 independent runs. Section 3.1.4 describes the statistical methodology including 95\% confidence intervals and significance testing protocols.
+
+\item {\bf Experiments compute resources}
+    \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce the experiments?
+    \item[] Answer: \textbf{Yes}
+    \item[] Justification: Section 4.1 provides detailed hardware specifications including Apple M1 processor details, 16 GB unified memory, cache hierarchy, and software environment. Execution times are reported for all optimized functions in Table 3.
+
+\item {\bf Code of ethics}
+    \item[] Question: Does the research conducted in the paper conform, in every respect, with the Agents4Science Code of Ethics (see conference website)?
+    \item[] Answer: \textbf{Yes}
+    \item[] Justification: Our research adheres to the NeurIPS Code of Ethics as referenced in the Responsible AI Statement. We emphasize transparency, reproducibility, and responsible deployment of AI-generated optimizations with appropriate safety measures.
+
+\item {\bf Broader impacts}
+    \item[] Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work performed?
+    \item[] Answer: \textbf{Yes}
+    \item[] Justification: The Responsible AI Statement comprehensively discusses positive impacts (democratizing parallel computing, energy savings) and potential risks (code correctness concerns, over-reliance on automation) along with specific mitigation strategies.
+
+\end{enumerate}

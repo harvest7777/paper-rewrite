@@ -1,1 +1,4 @@
 notes/*
+baseline/
+build-baseline/
+.venv/*
