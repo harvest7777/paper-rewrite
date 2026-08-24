@@ -1,3 +1,4 @@
-baseline/
-build-baseline/
+sandboxes/
+binaries/
+builds/
 .venv*
