@@ -1,0 +1,35 @@
+\section{Background and Related Work}
+\label{sec:related}
+
+\paragraph{The \texttt{dot} layout pipeline.}
+GraphViz's \texttt{dot} engine draws directed graphs using the layered approach
+introduced by Sugiyama et al.~\cite{sugiyama1981methods} and refined by Gansner
+et al.~\cite{gansner1993technique}. Layout proceeds in four phases, each
+depending on the last: \emph{ranking} assigns nodes to layers, \emph{crossing
+minimization} orders nodes within each layer to reduce edge crossings,
+\emph{coordinate assignment} fixes $x$ positions, and \emph{spline routing}
+draws the edges. Ranking and coordinate assignment are both solved with network
+simplex; crossing minimization is an iterative heuristic. GraphViz exposes a
+\texttt{-Gphase=N} attribute that runs a prefix of this pipeline and stops,
+which we use for phase attribution (Section~\ref{sec:method}).
+
+\paragraph{Agents modifying real code.}
+Benchmarks such as SWE-bench~\cite{jimenez2024swebench} evaluate agents on
+resolving real repository issues, where a test suite provides the success
+signal. Performance work differs in that no test can tell you whether an agent
+found the \emph{right} thing to optimize, and a change that is correct but
+useless passes every test. Prior work on learned compiler optimization
+\cite{cummins2023llmcompiler} targets transformations chosen in advance; here
+the choice of target is the object of study.
+
+\paragraph{Prior work on this codebase.}
+An earlier study by some of the present authors applied a multi-model ensemble
+to the same GraphViz layout code and reported a $3.78\times$ speedup from
+OpenMP parallelization of crossing minimization~\cite{estrada2025openmp}. That
+work has not been peer-reviewed. Our measurements do not reproduce it, and
+Section~\ref{sec:discussion} gives the phase composition and Amdahl ceiling
+that bound what parallelizing that phase can yield on this workload. We note
+also that its reported prompt template specifies the target speedup as an input
+requirement, which makes the reported figure difficult to interpret as an
+independent measurement. The present paper shares only the codebase and the
+general question; its protocol, measurements, and conclusions are separate.

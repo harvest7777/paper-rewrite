@@ -1,0 +1,66 @@
+\section{Introduction}
+\label{sec:intro}
+
+Coding agents are now routinely asked to modify real software. Most evaluations
+of that ability measure whether an agent can make a failing test pass
+\cite{jimenez2024swebench} --- a task with a clear oracle, where success is
+checkable by running the suite. Performance optimization has no such oracle. An
+agent asked to make a program faster must first decide \emph{what} to make
+faster, and a plausible-looking change that helps nothing is indistinguishable
+from a real improvement unless someone measures carefully.
+
+This paper asks a narrow version of that question. Given a mature C codebase, no
+hint about where time is spent, and an instruction only to make the program
+faster without changing its output, can a coding agent find a genuine bottleneck
+and fix it?
+
+We use the \texttt{dot} layout engine from GraphViz~\cite{ellson2001graphviz} as
+the subject. It is a good testbed for three reasons. It is real, widely deployed
+software rather than a benchmark written for the occasion. Its layered layout pipeline
+\cite{sugiyama1981methods,gansner1993technique} has distinct phases whose costs
+can be measured separately, so a speedup can be attributed rather than merely
+observed. And it has a deterministic text output format, which makes
+``the output did not change'' a checkable claim rather than a judgment call.
+
+\paragraph{What we did.}
+Two agents --- Claude Code and Codex --- each received a pristine checkout of
+GraphViz pinned to commit \texttt{23b06521} and an identical prompt naming no
+target function, file, or phase. The prompt explicitly forbade the shortcuts
+that would fake a win: caching layout results, special-casing inputs, and
+reducing the iteration counts that govern layout quality. Neither agent had
+access to the evaluation harness or the graphs it uses. We rebuilt each agent's
+result ourselves and measured it against an untouched baseline.
+
+\paragraph{What we found.}
+Both agents independently identified crossing minimization --- roughly half of
+baseline runtime on our 5{,}000-node graph --- as the target, and both produced
+byte-identical layout output. Measured independently, they achieved
+$1.47\times$ and $1.16\times$ end-to-end. Neither used parallelism: both went
+after serial algorithmic and memory-layout changes instead.
+
+The more interesting result appears at 10{,}000 nodes, where the two agents
+separate. One improves to $1.57\times$; the other is flat at $1.15\times$. The
+phase-level data explains the divergence. As the graph grows, the dominant cost
+shifts away from crossing minimization toward coordinate assignment, and only
+one agent had modified the code responsible for the latter. The agent that made
+the broader change tracked the workload; the one that optimized a single
+function did not.
+
+\paragraph{Contributions.}
+\begin{itemize}
+\item A controlled protocol for evaluating agent-driven optimization, with an
+      empirical noise floor established by benchmarking byte-identical binaries
+      against each other before any treatment is measured.
+\item Phase-resolved measurements of two agents' work on the same codebase,
+      with per-stage attribution and the Amdahl ceiling that bounds it.
+\item The observation that neither agent chose parallelism when the method was
+      left open, and evidence from the ceiling arithmetic that on this workload
+      that choice was correct.
+\item A complete artifact: pinned source, both agents' diffs and commit
+      histories, raw timing data, and the figure-generation scripts.
+\end{itemize}
+
+Section~\ref{sec:related} covers background. Section~\ref{sec:method} describes
+the protocol in detail, including the null test. Section~\ref{sec:results}
+reports measurements. Sections~\ref{sec:discussion}--\ref{sec:limitations}
+interpret them and state what we did not verify.

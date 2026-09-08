@@ -1,0 +1,54 @@
+\section*{Reproducibility Statement}
+\label{sec:repro}
+
+Every number in this paper comes from data in the artifact below. No result is
+estimated, extrapolated, or reported from a source other than the raw
+measurement files.
+
+\paragraph{Artifacts.}
+\begin{itemize}
+\item Claude's diff and commit history: \\
+      \url{https://github.com/harvest7777/claude-graphviz-run/compare/main...agent-work}
+\item Codex's diff and commit history: \\
+      \url{https://github.com/harvest7777/codex-graphviz-run/compare/main...agent-work}
+\item Raw timing data and session dumps: \\
+      \url{https://github.com/harvest7777/graphviz-results-dump}
+\end{itemize}
+
+\paragraph{Source.}
+GraphViz at commit
+\texttt{23b06521ab916e7f4f2ae2f9ef8413a8ccc66601}, from
+\url{https://gitlab.com/graphviz/graphviz.git}. Both agent branches are named
+\texttt{agent-work} and branch from that commit.
+
+\paragraph{Build.}
+\begin{verbatim}
+cmake -S <sandbox> -B <build> \
+  -DCMAKE_INSTALL_PREFIX=<prefix> \
+  -DWITH_POPPLER=OFF -DWITH_GVEDIT=OFF \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build <build> -j12 && cmake --install <build>
+\end{verbatim}
+Identical for all three sandboxes. On macOS a Bison $\geq 3.0$ path must be
+passed explicitly, as the system Bison is too old for the GraphViz build.
+
+\paragraph{Measurement.}
+\texttt{hyperfine} 1.20.0, 10 warmup and 10 timed runs, all binaries for a given
+(graph, phase) in a single invocation. Graphs are produced by the fixed-seed
+generator in the artifact repository. Raw per-run timings for every
+configuration --- including the null test --- are in the results repository as
+\texttt{hyperfine} JSON exports.
+
+\paragraph{Figures.}
+Every figure is regenerated from the raw JSON by a single script in the artifact
+(\texttt{figures/make\_figures.py}).
+
+\paragraph{Environment.}
+Apple M4 Pro, 12 cores (8 performance, 4 efficiency), 24\,GB unified memory,
+macOS 26.5.2, Apple Clang 17.0.0.
+
+\paragraph{Agents.}
+\texttt{claude-opus-5} (Claude Code) and \texttt{gpt-5.6-terra} (Codex), each
+invoked once, autonomously, with the prompt reproduced in the artifact
+repository. Neither had network access to the evaluation harness or benchmark
+graphs.

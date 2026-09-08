@@ -1,0 +1,80 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Both agents found the bottleneck}
+
+Neither agent was told where to look, and both went to crossing minimization ---
+the single largest consumer of runtime on the 5{,}000-node workload at $49.3\%$.
+Both further converged on the same specific transformation, fusing the two
+symmetric crossing-count passes, despite working in isolation. On this evidence
+the bottleneck-finding half of the task is not the hard part.
+
+The two diverge in how far they went. Codex stopped after optimizing the phase
+it had identified. Claude continued into network simplex, which is used for both
+ranking and coordinate assignment, and that decision is what its lead consists
+of.
+
+\subsection{The ceiling, and why breadth mattered}
+
+Amdahl's law~\cite{amdahl1967validity} bounds what optimizing a single phase can
+yield. From the composition in Table~\ref{tab:composition}, driving crossing
+minimization to \emph{zero} cost caps end-to-end speedup at $1.97\times$ at
+5{,}000 nodes --- and at only $1.60\times$ at 10{,}000, because that phase is a
+smaller fraction of the larger workload.
+
+That second number is the useful one. Claude measures $1.57\times$ at 10{,}000
+nodes, which is essentially at the ceiling for crossing minimization alone. It
+can sit there only because it also improved coordinate assignment; no amount of
+additional work on crossing minimization could have taken it past $1.60\times$.
+Codex, having modified one file, is bounded by a ceiling that shrinks as the
+workload grows.
+
+The general point is that on a multi-phase pipeline, the value of an
+optimization depends on how the phase weights move with problem size. An agent
+that optimizes the currently-dominant phase captures a ceiling that may be
+receding. We would not have observed this with a single graph size, and we
+suggest that phase-resolved measurement at more than one scale should be
+standard in this kind of evaluation.
+
+\subsection{Neither agent chose parallelism}
+
+Given a free choice of method, both agents pursued serial algorithmic and
+data-layout changes. Neither diff contains a single OpenMP directive or thread.
+
+The ceiling arithmetic suggests this was correct rather than merely
+conservative. Assume \emph{perfect} linear scaling across the 8 performance
+cores --- an assumption crossing minimization's rank-by-rank sweeps would not
+support. Parallelizing that phase alone then caps end-to-end speedup at
+$1.76\times$ at 5{,}000 nodes and at $1.49\times$ at 10{,}000, the ceiling
+falling as the phase's share of runtime does.
+
+At 5{,}000 nodes Claude's serial $1.47\times$ is below that bound. At 10{,}000
+it is above it: $1.57\times$ measured, against $1.49\times$ for idealized
+eight-core parallelization of the phase both agents targeted. A serial change
+outperformed what perfect parallelization of the nominated target could have
+achieved --- without introducing concurrency, and therefore without introducing
+the possibility of a data race.
+
+This bears on the prior work discussed in Section~\ref{sec:related}, which
+framed the problem as an OpenMP parallelization task and reported $3.78\times$.
+That figure exceeds the $3.56\times$ ceiling for eliminating \emph{both} of the
+two dominant phases entirely at 5{,}000 nodes, and is roughly twice what perfect
+parallelization of its stated target could produce. We make no claim about how
+that number arose; we observe that our measurements of the same codebase do not
+support it, and that the phase composition bounds it.
+
+\subsection{Cost}
+
+The two runs differed substantially in resource consumption. Claude ran for
+4\,h\,27\,m of working time and consumed roughly $9.2 \times 10^7$ tokens; Codex
+ran 23\,m\,42\,s wall-clock and consumed roughly $5.1 \times 10^6$. That is more
+than an order of magnitude in both dimensions for a $1.27\times$ difference in
+delivered layout time at 5{,}000 nodes, widening to $1.36\times$ at 10{,}000.
+
+We report these figures but caution against reading them as a like-for-like
+comparison. The two systems account for tokens differently --- one folds cached
+input into its input total, the other reports them separately --- and the time
+figures are not the same measurement, one excluding time spent waiting on user
+input and the other being raw elapsed time. Whether the additional effort was
+\emph{necessary} for the additional result, or merely accompanied it, is not
+something a single run of each can answer.

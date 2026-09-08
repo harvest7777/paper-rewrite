@@ -1,0 +1,34 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+Two coding agents, given an identical checkout of GraphViz and a prompt naming
+no target, both located the dominant cost in the \texttt{dot} layout pipeline
+and produced output-preserving speedups: $1.47\times$ and $1.16\times$
+end-to-end at 5{,}000 nodes, against an $8.4\%$ measured noise floor. Finding
+the bottleneck was evidently not the difficult part of the task.
+
+What separated them was scope. At 10{,}000 nodes the dominant phase shifts from
+crossing minimization to coordinate assignment, and the agent that had
+restructured network simplex --- code shared by both phases --- improves to
+$1.57\times$ while the agent that optimized a single function stays flat at
+$1.15\times$. An optimization's value depends on whether the phase it targets
+grows or shrinks with the workload, and a single problem size cannot reveal
+that.
+
+Neither agent used parallelism. On this workload the ceiling arithmetic suggests
+that was the right call: at 10{,}000 nodes, idealized eight-core parallelization
+of crossing minimization caps end-to-end speedup at $1.49\times$, and one agent
+exceeded that serially at $1.57\times$ --- without introducing concurrency or the
+possibility of a race.
+
+The results are modest, and we have tried to report them at the size they
+actually are. The protocol may be the more durable contribution: measure the
+noise floor with byte-identical binaries before measuring anything else, hold
+the evaluation harness out of the agents' reach, forbid the shortcuts that
+manufacture speedups, and attribute results by phase at more than one problem
+size. Each of these caught something in this study that a simpler design would
+have reported as a finding.
+
+Immediate future work is to repeat both agent runs to establish whether the
+ordering is stable, extend to a third graph size and to non-layered topologies,
+and complete the correctness checks named in Section~\ref{sec:limitations}.
