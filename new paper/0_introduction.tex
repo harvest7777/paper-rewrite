@@ -14,13 +14,13 @@ hint about where time is spent, and an instruction only to make the program
 faster without changing its output, can a coding agent find a genuine bottleneck
 and fix it?
 
-We use the \texttt{dot} layout engine from GraphViz~\cite{ellson2001graphviz} as
-the subject. It is a good testbed for three reasons. It is real, widely deployed
-software rather than a benchmark written for the occasion. Its layered layout pipeline
+We use the \texttt{dot} layout engine from GraphViz~\cite{ellson2001graphviz}.
+It is real, widely deployed software rather than a benchmark written for the
+occasion; its layered pipeline
 \cite{sugiyama1981methods,gansner1993technique} has distinct phases whose costs
 can be measured separately, so a speedup can be attributed rather than merely
-observed. And it has a deterministic text output format, which makes
-``the output did not change'' a checkable claim rather than a judgment call.
+observed; and its text output is deterministic, which makes ``the output did not
+change'' checkable rather than a judgment call.
 
 \paragraph{What we did.}
 Two agents --- Claude Code and Codex --- each received a pristine checkout of
@@ -29,38 +29,38 @@ target function, file, or phase. The prompt explicitly forbade the shortcuts
 that would fake a win: caching layout results, special-casing inputs, and
 reducing the iteration counts that govern layout quality. Neither agent had
 access to the evaluation harness or the graphs it uses. We rebuilt each agent's
-result ourselves and measured it against an untouched baseline.
+result ourselves and measured it against an untouched baseline, on three graph shapes with the node count held fixed.
 
 \paragraph{What we found.}
-Both agents independently identified crossing minimization --- roughly half of
-baseline runtime on our 5{,}000-node graph --- as the target, and both produced
-byte-identical layout output. Measured independently, they achieved
-$1.47\times$ and $1.16\times$ end-to-end. Neither used parallelism: both went
-after serial algorithmic and memory-layout changes instead.
+Both agents independently identified crossing minimization as the target, and
+both produced byte-identical layout output.
 
-The more interesting result appears at 10{,}000 nodes, where the two agents
-separate. One improves to $1.57\times$; the other is flat at $1.15\times$. The
-phase-level data explains the divergence. As the graph grows, the dominant cost
-shifts away from crossing minimization toward coordinate assignment, and only
-one agent had modified the code responsible for the latter. The agent that made
-the broader change tracked the workload; the one that optimized a single
-function did not.
+They separate on breadth. Claude improved three phases --- ranking, crossing
+minimization, coordinate assignment --- measuring $1.33\times$ to $1.84\times$
+end-to-end. Codex improved crossing minimization only, measuring $1.29\times$
+down to $0.99\times$: on one shape its optimization is real but the phase is
+$11.5\%$ of the workload, so nothing survives to the end-to-end result.
+
+Which phase dominates is a property of the graph's \emph{shape}, not its size.
+At identical node count, crossing minimization ranges from $11.5\%$ to $64\%$ of
+layout time, setting a different ceiling on each workload --- and on the sparsest
+one Claude exceeds the ceiling available to any crossing-minimization
+optimization at all.
 
 \paragraph{Contributions.}
 \begin{itemize}
-\item A controlled protocol for evaluating agent-driven optimization, with an
-      empirical noise floor established by benchmarking byte-identical binaries
-      against each other before any treatment is measured.
-\item Phase-resolved measurements of two agents' work on the same codebase,
-      with per-stage attribution and the Amdahl ceiling that bounds it.
-\item The observation that neither agent chose parallelism when the method was
-      left open, and evidence from the ceiling arithmetic that on this workload
-      that choice was correct.
+\item A controlled protocol for evaluating agent-driven optimization: balanced
+      command ordering, which also yields an empirical noise floor from the
+      baseline's own spread across orderings, and a held-out evaluation
+      harness.
+\item Phase-resolved measurements of two agents' work across three graph
+      shapes, with per-phase attribution and the shape-dependent ceiling
+      that bounds it.
 \item A complete artifact: pinned source, both agents' diffs and commit
       histories, raw timing data, and the figure-generation scripts.
 \end{itemize}
 
 Section~\ref{sec:related} covers background. Section~\ref{sec:method} describes
-the protocol in detail, including the null test. Section~\ref{sec:results}
-reports measurements. Sections~\ref{sec:discussion}--\ref{sec:limitations}
-interpret them and state what we did not verify.
+the protocol. Section~\ref{sec:results} reports
+measurements. Sections~\ref{sec:discussion}--\ref{sec:limitations} interpret
+them and state what we did not verify.

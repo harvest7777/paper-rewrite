@@ -6,18 +6,14 @@ the binaries we compare. Everything below follows from that.
 
 \subsection{Sandboxes and build}
 
-Three clones of the GraphViz repository were made, all checked out to commit
-\texttt{23b06521}. One was kept untouched as the baseline; the other two were
-given to the agents. Each clone was placed on its own named branch so that the
-agents' commit histories are preserved as artifacts rather than left on a
-detached \texttt{HEAD}.
+Three clones of GraphViz, all at commit \texttt{23b06521}. One stays untouched
+as the baseline; the other two go to the agents, each on its own branch so the
+commit histories survive as artifacts.
 
 All three were built with identical CMake flags
 (\texttt{-DCMAKE\_BUILD\_TYPE=Release}, Poppler and GVEdit disabled) and
-installed to separate prefixes. Each resulting \texttt{dot} binary resolves its
-libraries through an \texttt{@executable\_path}-relative rpath, so a binary
-always loads its own build of the layout libraries. We verified this rather than
-assuming it.
+installed to separate prefixes. We checked that each \texttt{dot} loads its own
+build of the layout libraries rather than a shared one.
 
 \subsection{The prompt}
 
@@ -30,7 +26,7 @@ The prompt also:
 \item described the target workload shape (large layered graphs with heavy edge
       crossings) without supplying the evaluation graphs, so agents generated
       their own test inputs;
-\item required byte-identical \texttt{-Tdot} output and pointed at the 265
+\item required byte-identical \texttt{-Tdot} output and pointed at the 260
       graphs in the repository's own \texttt{tests/} directory;
 \item enumerated disallowed shortcuts: detecting or special-casing specific
       inputs, caching layout results across runs, reducing iteration counts or
@@ -41,63 +37,100 @@ The prompt also:
       or no result at all was an acceptable outcome.
 \end{itemize}
 
-The prohibition on reducing iteration counts matters most. Crossing minimization
-is iteration-bounded, so cutting its iteration limit produces a large, real, and
-reproducible speedup that is not an optimization. The prompt reframed that as a
-finding to report rather than a change to ship, giving an agent that noticed it
-somewhere honest to put it.
+The iteration-count prohibition matters most. Crossing minimization is
+iteration-bounded, so cutting its limit yields a large, real, reproducible
+speedup that is not an optimization. The prompt asked for that to be reported as
+a finding rather than shipped as a change.
 
-Agents worked autonomously with no turn or time limit and were asked to commit
-incrementally and to write a report describing what they profiled, what they
-changed, what failed, and what they verified. Neither agent had access to the
-evaluation harness, the benchmark graphs, or the other agent's sandbox.
+Agents worked autonomously with no turn or time limit, committing incrementally
+and writing a report of what they profiled, changed, abandoned and verified.
+Neither had access to the evaluation harness, the benchmark graphs, or the other
+agent's sandbox.
+
+\subsection{Evaluation graphs}
+\label{sec:graphs}
+
+Graph generation is deterministic. Nodes are split into equal layers and each
+points at \texttt{fanout} random nodes in the next layer, which is what creates
+the crossings layout has to resolve.
+
+Node count is fixed at 5{,}000 and only the shape varies
+(Table~\ref{tab:graphs}):
+
+\begin{table}[htbp]
+\centering
+\caption{Evaluation graphs. All have 5{,}000 nodes.
+\textbf{Ranks:} $5{,}000 \div$ nodes-per-rank.
+\textbf{Edges:} $(\text{ranks} - 1) \times \text{nodes-per-rank} \times \text{fanout}$.}
+\label{tab:graphs}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Shape} & \textbf{Nodes/rank} & \textbf{Fanout} & \textbf{Ranks} & \textbf{Edges} \\
+\midrule
+sparse-deep   & 10  & 2 & 500 & 9{,}980  \\
+default       & 100 & 3 & 50  & 14{,}700 \\
+dense-shallow & 200 & 4 & 25  & 19{,}200 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+These parameters keep every phase measurable. Wider ranks make crossing
+minimization so expensive that nothing else is visible next to it.
+
+The generator does not pin ranks. Wrapping each layer in \texttt{rank=same} is
+legal DOT, but it supplies the answer the ranking phase exists to compute: on
+otherwise identical graphs that reduces ranking from $267$\,ms to $1$\,ms and
+removes the phase from measurement.
 
 \subsection{Measurement}
 
 All timings use \texttt{hyperfine} 1.20.0~\cite{peter2023hyperfine} with 10
-warmup and 10 timed runs.
-Every binary for a given (graph, phase) is measured in a \emph{single}
-\texttt{hyperfine} invocation, so the binaries run seconds apart under the same
-thermal conditions. This matters: measuring them in separate invocations
-produced order-dependent bias on our machine large enough to swamp the effects
-we are trying to detect. Consequently, only comparisons made within one
-invocation are meaningful, and we do not compare numbers across runs.
+warmup and 10 timed runs. All binaries for a graph are measured in one
+invocation, seconds apart under the same thermal conditions; separate
+invocations produce order-dependent bias large enough to swamp the effects we
+are looking for.
 
-Phase attribution uses \texttt{-Gphase=N}, which runs a prefix of the pipeline
-and returns. Phase timings are therefore \emph{cumulative}: phase~2 includes
-phase~1. Per-stage costs are obtained by differencing adjacent phases, which
-compounds the error of both terms; we report them as weaker evidence than the
-cumulative figures throughout.
+\texttt{hyperfine} runs all repetitions of one command before starting the next,
+so a fixed order always hands the same binary the tail of any drift. We rotate
+the order so each binary occupies each position once, then pool: three orderings,
+30 timed runs per binary per graph.
 
-Evaluation graphs are layered directed graphs generated by a fixed-seed script:
-100 nodes per rank, each node with three edges to randomly chosen nodes in the
-next rank, at 5{,}000 and 10{,}000 nodes. The generator is deterministic --- we
-verified that regenerating a graph reproduces it byte-for-byte --- so the
-described test suite and the measured one cannot diverge.
+The rotation also supplies the noise floor. The baseline is measured three
+times, once in each position, so the spread among its own means is what the
+protocol reports for a program compared against itself.
 
-Experiments ran on an Apple M4 Pro (12 cores: 8 performance, 4 efficiency),
-24\,GB unified memory, macOS 26.5.2, with Apple Clang 17.
+Two conventions hold throughout this paper. A \emph{mean} is always the
+arithmetic mean of individual timed runs, with warmup runs excluded. A
+\emph{speedup} is always the ratio of two such means --- never the mean of
+per-run or per-ordering ratios. The two are not equal, and every ratio we report
+is the former.
 
-\subsection{The null test}
-\label{sec:nulltest}
+We prefer this to benchmarking separately-built identical binaries, which we
+also tried. Those would be measured in their own invocation, with a different
+command set and a different thermal profile from the runs they are meant to
+bound. The baseline's spread is measured in the same invocations, on the same
+graphs, against the same competitors as the results it guards.
 
-Before measuring any agent's work we established what ``no difference'' looks
-like. The baseline build tree was installed to three separate prefixes,
-producing three binaries that are byte-identical (SHA-1
-\texttt{b02f718d\ldots}); these were then benchmarked against one another exactly
-as the real binaries are, as three commands in one \texttt{hyperfine} invocation.
+\subsection{Phase instrumentation}
 
-Any spread observed there is attributable to run ordering, thermal drift, and
-per-run variance --- everything the real comparison measures except source code.
-Section~\ref{sec:results} reports the result, and we use it as the floor below
-which no claimed speedup is meaningful. We rebuilt nothing for this test: a
-recompilation would embed a new build-date string into the version, introducing
-a difference rather than holding source constant.
+Phase costs are measured inside the process. An identical patch --- applied by
+cherry-pick, so all three diffs match byte for byte --- reads a monotonic clock
+around each phase and writes the elapsed time to standard error. It is off
+unless an environment variable is set, so layout output is unchanged and the
+correctness check below is unaffected.
+
+Parsing and output writing happen outside the layout routine, so the phases do
+not sum to wall clock. We report the difference rather than assigning it to a
+phase.
 
 \subsection{Correctness checking}
 
-Correctness is checked on \texttt{dot -Tdot} output rather than a rendered
-image. The \texttt{dot} text format is deterministic, so byte-identity is a
-meaningful assertion, whereas image comparison would fold in rendering and
-floating-point behaviour we are not studying. We additionally read both agents'
-diffs against the list of disallowed shortcuts in the prompt.
+Correctness is checked on \texttt{dot -Tdot} output, not a rendered image. The
+text format is deterministic, so byte-identity means something; image comparison
+would fold in rendering and floating-point behaviour we are not studying. We
+also read both diffs against the prompt's list of disallowed shortcuts.
+
+\subsection{Platform}
+
+Experiments ran on an Apple M4 Pro (12 cores: 8 performance, 4 efficiency),
+24\,GB unified memory, macOS 26.5.2, with Apple Clang 17.

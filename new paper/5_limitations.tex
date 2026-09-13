@@ -10,39 +10,8 @@ either would find a different target. This is the single weakest point in the
 study, and it means our results describe two particular runs rather than two
 systems.
 
-\paragraph{One graph topology.}
-All measurements use layered graphs with uniform rank width and constant
-fanout. Real inputs to \texttt{dot} vary in density, depth, and regularity, and
-the phase composition that drives our central argument is a property of this
-generator. Two graph sizes is enough to show that composition shifts; it is not
-enough to characterize how.
-
-\paragraph{Correctness is verified narrowly.}
-Byte-identical output was confirmed on the evaluation graphs. We did \emph{not}
-independently verify output identity across the 265 graphs in the GraphViz test
-suite, nor did we run the project's regression suite against the modified
-builds. Both agents report having done so; we did not confirm it.
-
-\paragraph{No race detection.}
-We did not run ThreadSanitizer against any binary. Since neither agent
-introduced concurrency this is a smaller gap than it would otherwise be, but it
-means our correctness claim rests on output identity and diff inspection rather
-than on tooling. We note that the sanitizer runtimes shipped with the host
-platform do not currently execute at all --- an empty program built with
-\texttt{-fsanitize=thread} crashes during sanitizer initialization on
-macOS~26 --- so any such check requires a Linux container, which we did not run.
-
-\paragraph{Derived stage figures.}
-Per-stage costs come from differencing cumulative phase measurements, which
-compounds the error of both terms. Where that error is large relative to the
-difference --- ranking at both sizes, spline routing at 10{,}000 nodes --- we
-report no result rather than a number.
-
-\paragraph{Cost figures are not comparable.}
-As described in Section~\ref{sec:discussion}, the token and time accounting
-differs between the two systems in ways we cannot normalize.
-
-\paragraph{Single machine.}
-All measurements come from one Apple M4 Pro. The noise floor, the phase
-composition, and the memory-locality effect that drives Claude's coordinate
-assignment result are all plausibly machine-dependent.
+\paragraph{Synthetic graphs only.}
+All three shapes come from the same generator, which produces uniform rank
+widths and constant fanout. Real inputs to \texttt{dot} are irregular in both.
+A generator also encodes assumptions about the workload that do not show up in
+aggregate timings, and we cannot rule out ones we have not noticed.

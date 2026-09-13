@@ -2,33 +2,30 @@
 \label{sec:conclusion}
 
 Two coding agents, given an identical checkout of GraphViz and a prompt naming
-no target, both located the dominant cost in the \texttt{dot} layout pipeline
-and produced output-preserving speedups: $1.47\times$ and $1.16\times$
-end-to-end at 5{,}000 nodes, against an $8.4\%$ measured noise floor. Finding
-the bottleneck was evidently not the difficult part of the task.
+no target, both located crossing minimization as the expensive phase and both
+produced output-preserving improvements to it. Finding the bottleneck was
+evidently not the difficult part of the task.
 
-What separated them was scope. At 10{,}000 nodes the dominant phase shifts from
-crossing minimization to coordinate assignment, and the agent that had
-restructured network simplex --- code shared by both phases --- improves to
-$1.57\times$ while the agent that optimized a single function stays flat at
-$1.15\times$. An optimization's value depends on whether the phase it targets
-grows or shrinks with the workload, and a single problem size cannot reveal
-that.
+What separated them was breadth. Claude carried on into network simplex, which
+serves two further phases, and improves three of five on every shape we
+tested --- $1.33\times$ to $1.84\times$ end-to-end. Codex optimized the one
+phase it identified and measures $1.29\times$ down to $0.99\times$. On the
+sparsest shape, Codex's optimization works, at $1.31\times$ on its phase, and
+still yields nothing end-to-end because that phase is $11.5\%$ of the workload.
 
-Neither agent used parallelism. On this workload the ceiling arithmetic suggests
-that was the right call: at 10{,}000 nodes, idealized eight-core parallelization
-of crossing minimization caps end-to-end speedup at $1.49\times$, and one agent
-exceeded that serially at $1.57\times$ --- without introducing concurrency or the
-possibility of a race.
+The ceiling an optimization can reach is a property of the input, not of the
+program. At fixed node count, crossing minimization ranges from $11.5\%$ to
+$64\%$ of layout time across our three shapes, and on the sparsest one
+Claude exceeds what any crossing-minimization optimization could achieve. A
+single benchmark graph cannot show this.
 
-The results are modest, and we have tried to report them at the size they
-actually are. The protocol may be the more durable contribution: measure the
-noise floor with byte-identical binaries before measuring anything else, hold
-the evaluation harness out of the agents' reach, forbid the shortcuts that
-manufacture speedups, and attribute results by phase at more than one problem
-size. Each of these caught something in this study that a simpler design would
-have reported as a finding.
+The results are modest and we have tried to report them at the size they are.
+The protocol may be the more durable contribution: balance command ordering and
+take the floor from the baseline's own spread across those orderings; keep the
+evaluation harness out of the agents' reach; forbid the shortcuts that
+manufacture speedups; measure phases directly rather than by subtraction. Each
+caught something a simpler design would have reported as a finding.
 
 Immediate future work is to repeat both agent runs to establish whether the
-ordering is stable, extend to a third graph size and to non-layered topologies,
+ordering is stable, extend to a second graph size and to non-synthetic inputs,
 and complete the correctness checks named in Section~\ref{sec:limitations}.

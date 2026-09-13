@@ -34,10 +34,11 @@ passed explicitly, as the system Bison is too old for the GraphViz build.
 
 \paragraph{Measurement.}
 \texttt{hyperfine} 1.20.0, 10 warmup and 10 timed runs, all binaries for a given
-(graph, phase) in a single invocation. Graphs are produced by the fixed-seed
+graph in a single invocation, repeated over three command orderings so each
+binary occupies each position once. Graphs are produced by the fixed-seed
 generator in the artifact repository. Raw per-run timings for every
-configuration --- including the null test --- are in the results repository as
-\texttt{hyperfine} JSON exports.
+configuration are in the results repository as \texttt{hyperfine} JSON exports,
+alongside the per-run phase logs.
 
 \paragraph{Figures.}
 Every figure is regenerated from the raw JSON by a single script in the artifact
@@ -46,6 +47,12 @@ Every figure is regenerated from the raw JSON by a single script in the artifact
 \paragraph{Environment.}
 Apple M4 Pro, 12 cores (8 performance, 4 efficiency), 24\,GB unified memory,
 macOS 26.5.2, Apple Clang 17.0.0.
+
+\paragraph{Phase instrumentation.}
+The patch that reports per-phase timings is a single commit on
+\texttt{lib/dotgen/dotinit.c}, applied by cherry-pick to all three sandboxes so
+that the three diffs are byte-identical. It is inactive unless
+\texttt{GV\_PHASE\_TIMING} is set in the environment.
 
 \paragraph{Agents.}
 \texttt{claude-opus-5} (Claude Code) and \texttt{gpt-5.6-terra} (Codex), each

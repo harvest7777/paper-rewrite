@@ -52,24 +52,25 @@
 \maketitle
 
 \begin{abstract}
-We ask whether a general-purpose coding agent, given no hint about where a
-program spends its time, can find and fix a real performance bottleneck in a
-mature C codebase. Two agents --- Claude Code and Codex --- were each given an
-identical checkout of GraphViz pinned to the same commit and the same
-open-ended instruction: make the \texttt{dot} layout program faster without
-changing its output. Neither was told which function, file, or phase to target,
-and neither had access to the evaluation harness or the benchmark graphs.
-Both agents independently identified crossing minimization as the dominant
-cost, and both produced output-preserving speedups under independent
-measurement: $1.47\times$ and $1.16\times$ end-to-end on a 5{,}000-node graph,
-against an empirically measured noise floor of $8.4\%$. Neither agent used
-parallelism; both pursued serial algorithmic and data-layout changes. On a
-10{,}000-node graph the two diverge --- one agent improves to $1.57\times$
-while the other stays flat at $1.15\times$ --- and the phase-level data
-explains why: the workload's dominant phase shifts from crossing minimization
-to coordinate assignment as the graph grows, and only one agent had touched
-the latter. We report what we measured, state the ceiling that bounds it, and
-name what we did not verify.
+Can a coding agent find and fix a real performance bottleneck on its own, with
+no hint about where the program spends its time? We gave two agents --- Claude
+Code and Codex --- the same untouched copy of GraphViz and the same instruction:
+make the \texttt{dot} layout program faster without changing what it draws.
+Neither was told which function or phase to look at, and neither could see the
+benchmark we would judge them on.
+
+Both found the same hot spot: crossing minimization, one of the five phases
+\texttt{dot} runs. They differ in how far they went. Claude improved three
+phases and made layout $1.33\times$ to $1.84\times$ faster. Codex improved one
+phase and ranged from $1.29\times$ faster down to no measurable change at all.
+
+That last result is the interesting one. Codex's optimization works --- it makes
+that phase $1.31\times$ faster --- but on one of our graphs that phase is only
+$11.5\%$ of the work, so the gain vanishes end to end. How much a phase is worth
+depends on the shape of the graph, not its size: crossing minimization is
+$11.5\%$ of layout time on one shape and $64\%$ on another with the same number
+of nodes. We measured how far apart two runs of the \emph{unmodified} program
+land, and report only differences larger than that.
 \end{abstract}
 
 \input{0_introduction}

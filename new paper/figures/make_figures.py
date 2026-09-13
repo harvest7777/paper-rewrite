@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Regenerate every figure in this directory from results/*.json.
+"""Regenerate every figure in this directory from results/.
 
     python3 make_figures.py
 
-Requires matplotlib (pip install matplotlib). Reads only; writes fig1..fig5
+Requires matplotlib (pip install matplotlib). Reads only; writes fig2..fig4
 as .pdf (for LaTeX) and .png (for eyeballing) into this directory.
+The noise floor is a table in the paper, not a figure.
 """
 
+import glob
 import json
 import os
+import re
+import statistics as st
+from collections import defaultdict
 
 import matplotlib
 matplotlib.use("Agg")
@@ -17,13 +22,17 @@ import matplotlib.pyplot as plt
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS = os.path.abspath(os.path.join(HERE, "..", "..", "results"))
 
-# baseline / claude / codex, fixed order, never cycled
-C = {"baseline": "#2a78d6", "claude": "#eb6834", "codex": "#1baf7a"}
-NULL = "#6d6d6d"
-PHASES = ["1", "2", "3", "full"]
-PHASE_LABEL = {"1": "rank", "2": "+mincross", "3": "+position", "full": "+splines"}
-STAGES = [("rank", "1", None), ("mincross", "2", "1"),
-          ("position", "3", "2"), ("splines", "full", "3")]
+BINARIES = ["timestamped", "claude", "codex"]
+LABEL = {"timestamped": "baseline", "claude": "claude", "codex": "codex"}
+COLOR = {"timestamped": "#2a78d6", "claude": "#eb6834", "codex": "#1baf7a"}
+
+TOPOLOGIES = ["5000-sparse-deep", "5000-default", "5000-dense-shallow"]
+NICE = {"5000-sparse-deep": "sparse-deep\n10 wide, 500 layers",
+        "5000-default": "default\n100 wide, 50 layers",
+        "5000-dense-shallow": "dense-shallow\n200 wide, 25 layers"}
+
+PHASES = ["init", "rank", "mincross", "position", "splines"]
+RAMP = ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0f2f5e"]
 
 plt.rcParams.update({
     "font.size": 9,
@@ -37,32 +46,34 @@ plt.rcParams.update({
 })
 
 
-def load(prefix):
-    """-> {phase: {name: {'mean': ms, 'times': [ms...]}}}"""
-    out = {}
-    for ph in PHASES:
-        path = os.path.join(RESULTS, f"{prefix}phase{ph}.json")
-        rows = json.load(open(path))["results"]
-        out[ph] = {}
-        for r in rows:
-            cmd = r["command"]
-            name = next((n for n in list(C) + ["null-a", "null-b", "null-c"]
-                         if f"/{n}/" in cmd), cmd)
-            out[ph][name] = {"mean": r["mean"] * 1000,
-                             "times": [t * 1000 for t in r["times"]]}
+def end_to_end(topology):
+    """-> {binary: [ms, ...]} pooled over every permutation."""
+    pooled = defaultdict(list)
+    for path in glob.glob(os.path.join(RESULTS, f"{topology}.gv-full-perm*.json")):
+        for row in json.load(open(path))["results"]:
+            b = re.search(r"binaries/(\w+)/", row["command"]).group(1)
+            pooled[b] += [t * 1000 for t in row["times"]]
+    return pooled
+
+
+def phases(topology):
+    """-> {binary: {phase: [ms, ...]}} from the timed runs only."""
+    out = defaultdict(lambda: defaultdict(list))
+    for path in glob.glob(os.path.join(RESULTS, "phases", f"{topology}.gv-*-perm*.txt")):
+        b = re.search(r"-(timestamped|claude|codex)-perm", path).group(1)
+        timed = False
+        for line in open(path):
+            line = line.strip()
+            if line == "REAL START":
+                timed = True
+                continue
+            if line == "REAL END":
+                timed = False
+                continue
+            m = re.match(r"phase\t(\w+)\t([\d.]+)", line)
+            if m and timed:
+                out[b][m.group(1)].append(float(m.group(2)))
     return out
-
-
-G5 = load("crossing-heavy-5000-nodes.gv-")
-G10 = load("crossing-heavy-10000-nodes.gv-")
-NT = load("nulltest-5000-")
-
-
-def stages(d):
-    """Per-stage cost by differencing adjacent cumulative phases."""
-    return {name: {k: d[a][k]["mean"] - (d[b][k]["mean"] if b else 0)
-                   for k in d[a]}
-            for name, a, b in STAGES}
 
 
 def save(fig, name):
@@ -72,123 +83,78 @@ def save(fig, name):
     print(f"  wrote {name}.pdf / {name}.png")
 
 
-# ---------------------------------------------------------------- fig 1
-# Null test: three byte-identical binaries. Establishes the noise floor.
-fig, axes = plt.subplots(1, 4, figsize=(9, 2.9))
-names = ["null-a", "null-b", "null-c"]
-for ax, ph in zip(axes, PHASES):
-    vals = [NT[ph][n]["mean"] for n in names]
-    spread = (max(vals) - min(vals)) / min(vals) * 100
-    for i, n in enumerate(names):
-        pts = NT[ph][n]["times"]
-        ax.scatter([i] * len(pts), pts, s=9, color=NULL, alpha=0.55,
-                   linewidths=0, zorder=2)
-        ax.hlines(NT[ph][n]["mean"], i - 0.28, i + 0.28,
-                  color="#111111", lw=1.6, zorder=3)
-    ax.set_xticks(range(3))
-    ax.set_xticklabels(["a", "b", "c"])
-    ax.set_title(f"phase {ph}\nspread {spread:.1f}%")
-    ax.set_xlim(-0.6, 2.6)
-axes[0].set_ylabel("ms")
-fig.tight_layout(rect=(0, 0, 1, 0.86))
-fig.suptitle("Three byte-identical binaries, 5,000-node graph "
-             "(10 runs each; black bar = mean)", y=0.99)
-save(fig, "fig1_null_test")
+E2E = {t: end_to_end(t) for t in TOPOLOGIES}
+PH = {t: phases(t) for t in TOPOLOGIES}
 
 
 # ---------------------------------------------------------------- fig 2
-# Where baseline time goes, and how it shifts with graph size.
-fig, ax = plt.subplots(figsize=(7.2, 2.2))
-ramp = ["#b7d3f6", "#86b6ef", "#3987e5", "#1c5cab"]
-for row, (label, d) in enumerate([("10,000 nodes", G10), ("5,000 nodes", G5)]):
-    st = stages(d)
-    total = d["full"]["baseline"]["mean"]
+# Where baseline time goes, by topology. Shape moves the weights, not size.
+fig, ax = plt.subplots(figsize=(7.4, 2.6))
+for row, topo in enumerate(TOPOLOGIES):
+    means = {p: st.mean(PH[topo]["timestamped"][p]) for p in PHASES}
+    total = sum(means.values())
     left = 0.0
-    for (name, _, _), color in zip(STAGES, ramp):
-        w = st[name]["baseline"] / total * 100
-        ax.barh(row, w, left=left, color=color, height=0.55,
+    for p, color in zip(PHASES, RAMP):
+        w = means[p] / total * 100
+        ax.barh(row, w, left=left, color=color, height=0.6,
                 edgecolor="white", linewidth=1.5)
-        if w > 6:
-            ax.text(left + w / 2, row, f"{name}\n{w:.0f}%", ha="center",
-                    va="center", fontsize=8,
-                    color="white" if color == "#1c5cab" else "#14181f")
+        if w > 7:
+            ax.text(left + w / 2, row, f"{p}\n{w:.0f}%", ha="center", va="center",
+                    fontsize=8, color="white" if color in RAMP[3:] else "#14181f")
         left += w
-ax.set_yticks([0, 1])
-ax.set_yticklabels(["10,000 nodes", "5,000 nodes"])
-ax.set_xlabel("share of baseline runtime (%)")
+ax.set_yticks(range(len(TOPOLOGIES)))
+ax.set_yticklabels([NICE[t] for t in TOPOLOGIES], fontsize=8)
+ax.set_xlabel("share of baseline layout time (%)")
 ax.set_xlim(0, 100)
 ax.grid(False)
-ax.set_title("Crossing minimization dominates at 5k; coordinate assignment "
-             "overtakes it at 10k", loc="left")
+ax.set_title("Crossing minimization is 11% of the work on one shape and 64% on "
+             "another,\nat identical node count", loc="left")
 save(fig, "fig2_phase_composition")
 
 
 # ---------------------------------------------------------------- fig 3
-# End-to-end result at both sizes, with every run plotted.
-fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.8))
-for ax, (label, d) in zip(axes, [("5,000 nodes", G5), ("10,000 nodes", G10)]):
-    base = d["full"]["baseline"]["mean"]
-    for i, k in enumerate(C):
-        ax.bar(i, d["full"][k]["mean"], color=C[k], width=0.6, zorder=1)
-        ax.scatter([i] * 10, d["full"][k]["times"], s=8, color="#14181f",
-                   alpha=0.55, linewidths=0, zorder=3)
-        if k != "baseline":
-            ax.text(i, d["full"][k]["mean"] * 0.5, f"{base / d['full'][k]['mean']:.2f}x",
-                    ha="center", color="white", fontsize=10, fontweight="bold")
+# End-to-end, all three topologies.
+fig, axes = plt.subplots(1, 3, figsize=(8.4, 2.9))
+for ax, topo in zip(axes, TOPOLOGIES):
+    base = st.mean(E2E[topo]["timestamped"])
+    for i, b in enumerate(BINARIES):
+        v = E2E[topo][b]
+        ax.bar(i, st.mean(v), color=COLOR[b], width=0.62, zorder=1)
+        ax.scatter([i] * len(v), v, s=5, color="#14181f", alpha=0.4,
+                   linewidths=0, zorder=3)
+        if b != "timestamped":
+            ax.text(i, st.mean(v) * 0.5, f"{base/st.mean(v):.2f}x", ha="center",
+                    color="white", fontsize=10, fontweight="bold")
     ax.set_xticks(range(3))
-    ax.set_xticklabels(list(C))
-    ax.set_title(label)
-axes[0].set_ylabel("full pipeline (ms)")
-fig.suptitle("End-to-end layout time (bars = mean of 10 runs; dots = individual runs)",
-             y=1.04)
+    ax.set_xticklabels([LABEL[b] for b in BINARIES], fontsize=8)
+    ax.set_title(NICE[topo].split("\n")[0])
+axes[0].set_ylabel("layout time (ms)")
+fig.tight_layout(rect=(0, 0, 1, 0.87))
+fig.suptitle("End-to-end layout time (bars = mean of 30 runs; dots = individual runs)",
+             y=0.99)
 save(fig, "fig3_end_to_end")
 
 
 # ---------------------------------------------------------------- fig 4
-# Per-run distributions. Shows phase 1 fully overlapping.
-fig, axes = plt.subplots(1, 4, figsize=(9, 2.9))
-for ax, ph in zip(axes, PHASES):
-    for i, k in enumerate(C):
-        pts = G5[ph][k]["times"]
-        ax.scatter([i] * len(pts), pts, s=10, color=C[k], alpha=0.7,
-                   linewidths=0, zorder=2)
-        ax.hlines(G5[ph][k]["mean"], i - 0.28, i + 0.28,
-                  color="#14181f", lw=1.4, zorder=3)
-    ax.set_xticks(range(3))
-    ax.set_xticklabels(["base", "cla", "cod"], fontsize=8)
-    ax.set_title(f"phase {ph}\n({PHASE_LABEL[ph]})")
-    ax.set_xlim(-0.6, 2.6)
-axes[0].set_ylabel("ms")
-fig.tight_layout(rect=(0, 0, 1, 0.86))
-fig.suptitle("Every run, 5,000-node graph — phase 1 overlaps completely; "
-             "phases 2-3 separate cleanly", y=0.99)
-save(fig, "fig4_per_run_distributions")
-
-
-# ---------------------------------------------------------------- fig 5
-# Does the advantage hold as the graph grows?
-fig, ax = plt.subplots(figsize=(4.6, 2.8))
-sizes, x = ["5,000", "10,000"], [0, 1]
-floor = 8.39  # worst-case identical-binary spread, fig 1
-ax.axhspan(1.0, 1 + floor / 100, color="#c9c9c9", alpha=0.55, zorder=0)
-ax.text(1.30, 1 + floor / 200, "noise floor", fontsize=7.5,
-        color="#4c5663", va="center", ha="right")
-for k in ["claude", "codex"]:
-    ys = [G5["full"]["baseline"]["mean"] / G5["full"][k]["mean"],
-          G10["full"]["baseline"]["mean"] / G10["full"][k]["mean"]]
-    ax.plot(x, ys, "-o", color=C[k], label=k, lw=1.8, ms=5, zorder=3)
-    for xi, y in zip(x, ys):
-        ax.annotate(f"{y:.2f}x", (xi, y), textcoords="offset points",
-                    xytext=(0, 7), ha="center", fontsize=8, color=C[k])
-ax.axhline(1.0, color="#14181f", lw=1, ls="--", zorder=1)
-ax.set_xticks(x)
-ax.set_xticklabels(sizes)
-ax.set_xlabel("graph size (nodes)")
-ax.set_ylabel("end-to-end speedup")
-ax.set_xlim(-0.25, 1.6)
-ax.set_ylim(0.95, 1.75)
-ax.legend(frameon=False, loc="upper left")
-ax.set_title("Only one agent's advantage grows with the workload", loc="left")
-save(fig, "fig5_scaling")
+# Per-phase speedup. Claude wins four phases; Codex wins one.
+fig, axes = plt.subplots(1, 3, figsize=(8.4, 2.9), sharey=True)
+width = 0.36
+for ax, topo in zip(axes, TOPOLOGIES):
+    for k, b in enumerate(["claude", "codex"]):
+        xs, ys = [], []
+        for i, p in enumerate(PHASES):
+            xs.append(i + (k - 0.5) * width)
+            ys.append(st.mean(PH[topo]["timestamped"][p]) / st.mean(PH[topo][b][p]))
+        ax.bar(xs, ys, width=width, color=COLOR[b], label=LABEL[b], zorder=2)
+    ax.axhline(1.0, color="#14181f", lw=1, ls="--", zorder=3)
+    ax.set_xticks(range(len(PHASES)))
+    ax.set_xticklabels(PHASES, rotation=45, ha="right", fontsize=8)
+    ax.set_title(NICE[topo].split("\n")[0])
+axes[0].set_ylabel("speedup over baseline")
+axes[0].legend(frameon=False, fontsize=8, loc="upper left")
+fig.tight_layout(rect=(0, 0, 1, 0.87))
+fig.suptitle("Per-phase speedup. Claude improves three phases; Codex improves one.",
+             y=0.99)
+save(fig, "fig4_phase_speedup")
 
 print("\ndone.")
