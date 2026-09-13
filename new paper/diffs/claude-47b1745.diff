@@ -1,0 +1,191 @@
+diff --git a/lib/common/ns.c b/lib/common/ns.c
+index 692818763..44b809e50 100644
+--- a/lib/common/ns.c
++++ b/lib/common/ns.c
+@@ -35,3 +35,5 @@ static void dfs_cutval(node_t * v, edge_t * par);
+ static int dfs_range_init(node_t *v);
+-static int dfs_range(node_t * v, edge_t * par, int low);
++typedef struct network_simplex_ctx_s network_simplex_ctx_t;
++static int dfs_range(network_simplex_ctx_t *ctx, node_t *v, edge_t *par,
++                     int low);
+ static int x_val(edge_t * e, node_t * v, int dir);
+@@ -46,3 +48,11 @@ static void check_cycles(graph_t * g);
+ 
++/// a stack frame of the iterative DFS in `dfs_range`
+ typedef struct {
++    node_t *v;   ///< node this frame is visiting
++    edge_t *par; ///< tree edge connecting `v` to its parent
++    int out_i;   ///< iteration counter through `ND_tree_out(v).list`
++    int in_i;    ///< iteration counter through `ND_tree_in(v).list`
++} dfs_frame_t;
++
++struct network_simplex_ctx_s {
+     graph_t *G;
+@@ -52,3 +62,8 @@ typedef struct {
+     int Search_size;
+-} network_simplex_ctx_t;
++    /* scratch stack for `dfs_range`, retained between calls to avoid
++     * re-allocating it on every network simplex iteration
++     */
++    dfs_frame_t *dfs_stack;
++    size_t dfs_stack_cap;
++};
+ 
+@@ -743,3 +758,3 @@ update(network_simplex_ctx_t *ctx, edge_t * e, edge_t * f)
+     exchange_tree_edges(ctx, e, f);
+-    dfs_range(lca, ND_par(lca), lca_low);
++    dfs_range(ctx, lca, ND_par(lca), lca_low);
+     return 0;
+@@ -764,2 +779,5 @@ static void reset_lists(network_simplex_ctx_t *ctx) {
+   LIST_FREE(&ctx->Tree_edge);
++  free(ctx->dfs_stack);
++  ctx->dfs_stack = NULL;
++  ctx->dfs_stack_cap = 0;
+ }
+@@ -1241,6 +1259,5 @@ static int dfs_range_init(node_t *v) {
+  */
+-static int dfs_range(node_t * v, edge_t * par, int low)
++static int dfs_range(network_simplex_ctx_t *ctx, node_t *v, edge_t *par,
++                     int low)
+ {
+-    int lim = 0;
+-
+     if (ND_par(v) == par && ND_low(v) == low) {
+@@ -1249,48 +1266,55 @@ static int dfs_range(node_t * v, edge_t * par, int low)
+ 
+-    LIST(dfs_state_t) todo = {0};
+-
+     ND_par(v) = par;
+     ND_low(v) = low;
+-    const dfs_state_t root = {.v = v, .par = par, .lim = low};
+-    LIST_PUSH_BACK(&todo, root);
+ 
+-    while (!LIST_IS_EMPTY(&todo)) {
+-	bool processed_child = false;
+-	dfs_state_t *const s = LIST_BACK(&todo);
+-
+-	while (ND_tree_out(s->v).list[s->tree_out_i]) {
+-	    edge_t *const e = ND_tree_out(s->v).list[s->tree_out_i];
+-	    ++s->tree_out_i;
+-	    if (e != s->par) {
+-		node_t *const n = aghead(e);
+-		if (ND_par(n) == e && ND_low(n) == s->lim) {
+-		    s->lim = ND_lim(n) + 1;
+-		} else {
+-		    ND_par(n) = e;
+-		    ND_low(n) = s->lim;
+-		    const dfs_state_t next = {.v = n, .par = e, .lim = s->lim};
+-		    LIST_PUSH_BACK(&todo, next);
+-		}
+-		processed_child = true;
+-		break;
++    /* This is the hottest loop in network simplex: it re-numbers the whole
++     * subtree below the LCA after every pivot. It is written so that the
++     * frame currently being visited (`v`, `par`, `lim`, `out_i`, `in_i`)
++     * lives in locals rather than being repeatedly reloaded through a
++     * pointer into the (reallocatable) explicit stack. The stack is only
++     * touched when descending or ascending.
++     */
++    dfs_frame_t *stack = ctx->dfs_stack;
++    size_t cap = ctx->dfs_stack_cap;
++    size_t top = 0;
++
++    int lim = low;
++    int out_i = 0;
++    int in_i = 0;
++
++    for (;;) {
++	edge_t *e;
++	node_t *n = NULL;
++	edge_t *n_par = NULL;
++
++	edge_t **list = ND_tree_out(v).list;
++	while ((e = list[out_i]) != NULL) {
++	    ++out_i;
++	    if (e == par) {
++		continue;
+ 	    }
+-	}
+-	if (processed_child) {
+-	    continue;
++	    node_t *const w = aghead(e);
++	    if (ND_par(w) == e && ND_low(w) == lim) {
++		lim = ND_lim(w) + 1;
++		continue;
++	    }
++	    n = w;
++	    n_par = e;
++	    break;
+ 	}
+ 
+-	while (ND_tree_in(s->v).list[s->tree_in_i]) {
+-	    edge_t *const e = ND_tree_in(s->v).list[s->tree_in_i];
+-	    ++s->tree_in_i;
+-	    if (e != s->par) {
+-		node_t *const n = agtail(e);
+-		if (ND_par(n) == e && ND_low(n) == s->lim) {
+-		    s->lim = ND_lim(n) + 1;
+-		} else {
+-		    ND_par(n) = e;
+-		    ND_low(n) = s->lim;
+-		    const dfs_state_t next = {.v = n, .par = e, .lim = s->lim};
+-		    LIST_PUSH_BACK(&todo, next);
++	if (n == NULL) {
++	    list = ND_tree_in(v).list;
++	    while ((e = list[in_i]) != NULL) {
++		++in_i;
++		if (e == par) {
++		    continue;
++		}
++		node_t *const w = agtail(e);
++		if (ND_par(w) == e && ND_low(w) == lim) {
++		    lim = ND_lim(w) + 1;
++		    continue;
+ 		}
+-		processed_child = true;
++		n = w;
++		n_par = e;
+ 		break;
+@@ -1298,3 +1322,16 @@ static int dfs_range(node_t * v, edge_t * par, int low)
+ 	}
+-	if (processed_child) {
++
++	if (n != NULL) { // descend into `n`
++	    if (top == cap) {
++		cap = cap == 0 ? 64 : cap * 2;
++		stack = gv_recalloc(stack, top, cap, sizeof(dfs_frame_t));
++	    }
++	    stack[top++] = (dfs_frame_t){.v = v, .par = par, .out_i = out_i,
++	                                 .in_i = in_i};
++	    ND_par(n) = n_par;
++	    ND_low(n) = lim;
++	    v = n;
++	    par = n_par;
++	    out_i = 0;
++	    in_i = 0;
+ 	    continue;
+@@ -1302,13 +1339,17 @@ static int dfs_range(node_t * v, edge_t * par, int low)
+ 
+-	ND_lim(s->v) = s->lim;
+-
+-	lim = s->lim;
+-	LIST_DROP_BACK(&todo);
++	ND_lim(v) = lim;
+ 
+-	if (!LIST_IS_EMPTY(&todo)) {
+-	    LIST_BACK(&todo)->lim = lim + 1;
++	if (top == 0) {
++	    break;
+ 	}
++	const dfs_frame_t f = stack[--top];
++	v = f.v;
++	par = f.par;
++	out_i = f.out_i;
++	in_i = f.in_i;
++	++lim;
+     }
+ 
+-    LIST_FREE(&todo);
++    ctx->dfs_stack = stack;
++    ctx->dfs_stack_cap = cap;
+ 

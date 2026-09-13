@@ -1,0 +1,251 @@
+diff --git a/lib/dotgen/mincross.c b/lib/dotgen/mincross.c
+index 49503bf4b..cbcae559d 100644
+--- a/lib/dotgen/mincross.c
++++ b/lib/dotgen/mincross.c
+@@ -592,3 +592,8 @@ typedef struct {
+ 
+-enum { XKEY_STATIC = 64 }; ///< degree up to which `xkeys` needs no allocation
++/// a re-used buffer of gathered `xkey_t`s
++typedef struct {
++  xkey_t *base;
++  size_t size;
++  size_t capacity;
++} xkeys_t;
+ 
+@@ -596,8 +601,6 @@ enum { XKEY_STATIC = 64 }; ///< degree up to which `xkeys` needs no allocation
+ ///
++/// @param k Buffer to fill, re-using its storage
+ /// @param list NULL-terminated edge list to walk
+ /// @param head Take the head end of each edge (otherwise the tail end)
+-/// @param buf Caller-provided space for up to `XKEY_STATIC` entries
+-/// @param n Set to the number of entries gathered
+-/// @return `buf`, or a heap allocation the caller must free if it did not fit
+-static xkey_t *xkeys(edge_t **list, bool head, xkey_t *buf, size_t *n) {
++static void xkeys_fill(xkeys_t *k, edge_t **list, bool head) {
+   size_t len = 0;
+@@ -606,16 +609,18 @@ static xkey_t *xkeys(edge_t **list, bool head, xkey_t *buf, size_t *n) {
+   }
+-  xkey_t *const keys = len <= XKEY_STATIC ? buf : gv_calloc(len, sizeof(xkey_t));
++  if (len > k->capacity) {
++    k->base = gv_recalloc(k->base, k->capacity, len, sizeof(xkey_t));
++    k->capacity = len;
++  }
+   for (size_t i = 0; i < len; ++i) {
+     edge_t *const e = list[i];
+-    keys[i].pen = ED_xpenalty(e);
++    k->base[i].pen = ED_xpenalty(e);
+     if (head) {
+-      keys[i].order = ND_order(aghead(e));
+-      keys[i].x = ED_head_port(e).p.x;
++      k->base[i].order = ND_order(aghead(e));
++      k->base[i].x = ED_head_port(e).p.x;
+     } else {
+-      keys[i].order = ND_order(agtail(e));
+-      keys[i].x = ED_tail_port(e).p.x;
++      k->base[i].order = ND_order(agtail(e));
++      k->base[i].x = ED_tail_port(e).p.x;
+     }
+   }
+-  *n = len;
+-  return keys;
++  k->size = len;
+ }
+@@ -626,26 +631,20 @@ static xkey_t *xkeys(edge_t **list, bool head, xkey_t *buf, size_t *n) {
+  * incurred with them swapped. Every pair of edges contributes to exactly one of
+- * the two (or to neither, when it is a tie), so both orderings can be counted
+- * in a single pass over the pairs instead of four separate nested loops with
+- * the edge attributes re-read from cold memory each time.
++ * the two (or to neither, when it is a tie), so both orderings come out of a
++ * single pass over the pairs, instead of the four separate nested loops with
++ * the edge attributes re-read from cold memory that this replaces.
+  */
+-static void cross_pair(edge_t **vlist, edge_t **wlist, bool head, int64_t *c0,
++static void cross_pair(const xkeys_t *v, const xkeys_t *w, int64_t *c0,
+                        int64_t *c1) {
+-  xkey_t vbuf[XKEY_STATIC];
+-  xkey_t wbuf[XKEY_STATIC];
+-  size_t vn, wn;
+-  xkey_t *const vk = xkeys(vlist, head, vbuf, &vn);
+-  xkey_t *const wk = xkeys(wlist, head, wbuf, &wn);
+-
+   int64_t a = 0;
+   int64_t b = 0;
+-  for (size_t i = 0; i < vn; ++i) {
+-    const int vo = vk[i].order;
+-    const int vp = vk[i].pen;
+-    const double vx = vk[i].x;
+-    for (size_t j = 0; j < wn; ++j) {
+-      const int t = vo - wk[j].order;
+-      const int prod = vp * wk[j].pen;
+-      if (t > 0 || (t == 0 && vx > wk[j].x)) {
++  for (size_t i = 0; i < v->size; ++i) {
++    const int vo = v->base[i].order;
++    const int vp = v->base[i].pen;
++    const double vx = v->base[i].x;
++    for (size_t j = 0; j < w->size; ++j) {
++      const int t = vo - w->base[j].order;
++      const int prod = vp * w->base[j].pen;
++      if (t > 0 || (t == 0 && vx > w->base[j].x)) {
+         a += prod;
+-      } else if (t < 0 || (t == 0 && wk[j].x > vx)) {
++      } else if (t < 0 || (t == 0 && w->base[j].x > vx)) {
+         b += prod;
+@@ -656,9 +655,2 @@ static void cross_pair(edge_t **vlist, edge_t **wlist, bool head, int64_t *c0,
+   *c1 += b;
+-
+-  if (vk != vbuf) {
+-    free(vk);
+-  }
+-  if (wk != wbuf) {
+-    free(wk);
+-  }
+ }
+@@ -677,42 +669,100 @@ static void exchange(node_t *v, node_t *w) {
+ 
+-static int64_t transpose_step(graph_t *g, int r, bool reverse) {
+-  int i;
+-  node_t *v, *w;
+-
++/// scratch buffers `transpose_step` rolls along a rank
++typedef struct {
++  xkeys_t in_v;
++  xkeys_t in_w;
++  xkeys_t out_v;
++  xkeys_t out_w;
++} transpose_scratch_t;
++
++static int64_t transpose_step(graph_t *g, int r, bool reverse,
++                              transpose_scratch_t *scratch) {
+   int64_t rv = 0;
+   GD_rank(g)[r].candidate = false;
+-  for (i = 0; i < GD_rank(g)[r].n - 1; i++) {
+-    v = GD_rank(g)[r].v[i];
+-    w = GD_rank(g)[r].v[i + 1];
++  const int n = GD_rank(g)[r].n;
++  if (n < 2) {
++    return rv;
++  }
++
++  /* whether the two crossing counts are wanted at all is fixed for the rank */
++  const bool do_in = r > 0;
++  const bool do_out = GD_rank(g)[r + 1].n > 0;
++  if (!do_in && !do_out) {
++    return rv;
++  }
++
++  /* Each node is the right hand side of one pair and the left hand side of the
++   * next, so its gathered keys are carried over instead of being collected
++   * twice.
++   */
++  xkeys_t *in_v = &scratch->in_v;
++  xkeys_t *in_w = &scratch->in_w;
++  xkeys_t *out_v = &scratch->out_v;
++  xkeys_t *out_w = &scratch->out_w;
++  {
++    node_t *const first = GD_rank(g)[r].v[0];
++    if (do_in) {
++      xkeys_fill(in_v, ND_in(first).list, false);
++    }
++    if (do_out) {
++      xkeys_fill(out_v, ND_out(first).list, true);
++    }
++  }
++
++  for (int i = 0; i < n - 1; i++) {
++    node_t *const v = GD_rank(g)[r].v[i];
++    node_t *const w = GD_rank(g)[r].v[i + 1];
+     assert(ND_order(v) < ND_order(w));
+-    if (left2right(g, v, w))
+-      continue;
+-    int64_t c0 = 0;
+-    int64_t c1 = 0;
+-    if (r > 0) {
+-      cross_pair(ND_in(v).list, ND_in(w).list, false, &c0, &c1);
++    if (do_in) {
++      xkeys_fill(in_w, ND_in(w).list, false);
+     }
+-    if (GD_rank(g)[r + 1].n > 0) {
+-      int64_t o0 = 0;
+-      int64_t o1 = 0;
+-      cross_pair(ND_out(v).list, ND_out(w).list, true, &o0, &o1);
+-      /* `out_cross` accumulated in an `int`; preserve that truncation */
+-      c0 += (int)o0;
+-      c1 += (int)o1;
++    if (do_out) {
++      xkeys_fill(out_w, ND_out(w).list, true);
+     }
+-    if (c1 < c0 || (c0 > 0 && reverse && c1 == c0)) {
+-      exchange(v, w);
+-      rv += c0 - c1;
+-      GD_rank(Root)[r].valid = false;
+-      GD_rank(g)[r].candidate = true;
+-
+-      if (r > GD_minrank(g)) {
+-        GD_rank(Root)[r - 1].valid = false;
+-        GD_rank(g)[r - 1].candidate = true;
++
++    bool exchanged = false;
++    if (!left2right(g, v, w)) {
++      int64_t c0 = 0;
++      int64_t c1 = 0;
++      if (do_in) {
++        cross_pair(in_v, in_w, &c0, &c1);
++      }
++      if (do_out) {
++        int64_t o0 = 0;
++        int64_t o1 = 0;
++        cross_pair(out_v, out_w, &o0, &o1);
++        /* `out_cross` accumulated in an `int`; preserve that truncation */
++        c0 += (int)o0;
++        c1 += (int)o1;
+       }
+-      if (r < GD_maxrank(g)) {
+-        GD_rank(Root)[r + 1].valid = false;
+-        GD_rank(g)[r + 1].candidate = true;
++      if (c1 < c0 || (c0 > 0 && reverse && c1 == c0)) {
++        exchange(v, w);
++        rv += c0 - c1;
++        GD_rank(Root)[r].valid = false;
++        GD_rank(g)[r].candidate = true;
++
++        if (r > GD_minrank(g)) {
++          GD_rank(Root)[r - 1].valid = false;
++          GD_rank(g)[r - 1].candidate = true;
++        }
++        if (r < GD_maxrank(g)) {
++          GD_rank(Root)[r + 1].valid = false;
++          GD_rank(g)[r + 1].candidate = true;
++        }
++        /* `exchange` rewrites the root's rank array, which may or may not be
++         * the one being walked here, so ask it whether the two nodes actually
++         * swapped places
++         */
++        exchanged = GD_rank(g)[r].v[i] != v;
+       }
+     }
++    /* the left hand side of the next pair is whichever node now sits at i+1 */
++    if (!exchanged) {
++      xkeys_t *const t_in = in_v;
++      in_v = in_w;
++      in_w = t_in;
++      xkeys_t *const t_out = out_v;
++      out_v = out_w;
++      out_w = t_out;
++    }
+   }
+@@ -726,2 +776,3 @@ static void transpose(graph_t *g, bool reverse) {
+     GD_rank(g)[r].candidate = true;
++  transpose_scratch_t scratch = {0};
+   int64_t delta;
+@@ -731,3 +782,3 @@ static void transpose(graph_t *g, bool reverse) {
+       if (GD_rank(g)[r].candidate) {
+-        delta += transpose_step(g, r, reverse);
++        delta += transpose_step(g, r, reverse, &scratch);
+       }
+@@ -735,2 +786,6 @@ static void transpose(graph_t *g, bool reverse) {
+   } while (delta >= 1);
++  free(scratch.in_v.base);
++  free(scratch.in_w.base);
++  free(scratch.out_v.base);
++  free(scratch.out_w.base);
+ }

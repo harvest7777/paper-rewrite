@@ -1,0 +1,57 @@
+diff --git a/lib/common/ns.c b/lib/common/ns.c
+index eec1c95fc..6a06375ae 100644
+--- a/lib/common/ns.c
++++ b/lib/common/ns.c
+@@ -768,3 +768,3 @@ static Agnode_t *treeupdate(Agnode_t *v, Agnode_t *w, int cutvalue, bool dir) {
+ 
+-static void rerank(Agnode_t * v, int delta)
++static void rerank(network_simplex_ctx_t *ctx, Agnodeinfo_t *v, int delta)
+ {
+@@ -772,9 +772,15 @@ static void rerank(Agnode_t * v, int delta)
+ 
+-    ND_rank(v) -= delta;
+-    for (int i = 0; (e = ND_tree_out(v).list[i]); i++)
+-	if (e != ND_par(v))
+-	    rerank(aghead(e), delta);
+-    for (int i = 0; (e = ND_tree_in(v).list[i]); i++)
+-	if (e != ND_par(v))
+-	    rerank(agtail(e), delta);
++    v->rank -= delta;
++    /* `rerank` only touches ranks, so the parent edge and the tree lists are
++     * invariant across the recursion below and can be hoisted
++     */
++    edge_t *const par = v->par;
++    Agnodeinfo_t **nbr = tree_nbr(ctx, v->tree_out);
++    for (int i = 0; (e = v->tree_out.list[i]); i++)
++	if (e != par)
++	    rerank(ctx, nbr[i], delta);
++    nbr = tree_nbr(ctx, v->tree_in);
++    for (int i = 0; (e = v->tree_in.list[i]); i++)
++	if (e != par)
++	    rerank(ctx, nbr[i], delta);
+ }
+@@ -792,3 +798,3 @@ update(network_simplex_ctx_t *ctx, edge_t * e, edge_t * f)
+ 	if (s == 1)
+-	    rerank(agtail(e), delta);
++	    rerank(ctx, NI(agtail(e)), delta);
+ 	else {
+@@ -796,8 +802,8 @@ update(network_simplex_ctx_t *ctx, edge_t * e, edge_t * f)
+ 	    if (s == 1)
+-		rerank(aghead(e), -delta);
++		rerank(ctx, NI(aghead(e)), -delta);
+ 	    else {
+ 		if (ND_lim(agtail(e)) < ND_lim(aghead(e)))
+-		    rerank(agtail(e), delta);
++		    rerank(ctx, NI(agtail(e)), delta);
+ 		else
+-		    rerank(aghead(e), -delta);
++		    rerank(ctx, NI(aghead(e)), -delta);
+ 	    }
+@@ -877,5 +883,5 @@ static void LR_balance(network_simplex_ctx_t *ctx)
+ 	    if (ND_lim(agtail(e)) < ND_lim(aghead(e)))
+-		rerank(agtail(e), delta / 2);
++		rerank(ctx, NI(agtail(e)), delta / 2);
+ 	    else
+-		rerank(aghead(e), -delta / 2);
++		rerank(ctx, NI(aghead(e)), -delta / 2);
+ 	}

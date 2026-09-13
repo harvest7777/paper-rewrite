@@ -1,0 +1,139 @@
+diff --git a/lib/common/ns.c b/lib/common/ns.c
+index 7bc46fcd5..eec1c95fc 100644
+--- a/lib/common/ns.c
++++ b/lib/common/ns.c
+@@ -76,2 +76,7 @@ struct network_simplex_ctx_s {
+     Agnodeinfo_t **tree_nbrs;
++    /* scratch stack for `dfs_enter_outedge`/`dfs_enter_inedge`, retained
++     * between calls to avoid re-allocating it on every pivot
++     */
++    Agnodeinfo_t **enter_stack;
++    size_t enter_stack_cap;
+ };
+@@ -264,3 +269,15 @@ static edge_t *leave_edge(network_simplex_ctx_t *ctx)
+ 
+-static edge_t *dfs_enter_outedge(node_t *v, int Low, int Lim) {
++/// push a node onto one of the scratch stacks in `network_simplex_ctx_t`
++#define NS_PUSH(stack, cap, top, item)                                         \
++    do {                                                                       \
++	if ((top) == (cap)) {                                                  \
++	    const size_t new_cap = (cap) == 0 ? 64 : (cap) * 2;                \
++	    (stack) = gv_recalloc((stack), (cap), new_cap, sizeof(*(stack)));  \
++	    (cap) = new_cap;                                                   \
++	}                                                                      \
++	(stack)[(top)++] = (item);                                             \
++    } while (0)
++
++static edge_t *dfs_enter_outedge(network_simplex_ctx_t *ctx, Agnodeinfo_t *v,
++                                 int Low, int Lim) {
+     edge_t *e;
+@@ -269,9 +286,12 @@ static edge_t *dfs_enter_outedge(node_t *v, int Low, int Lim) {
+ 
+-    LIST(node_t *) todo = {0};
+-    LIST_APPEND(&todo, v);
++    Agnodeinfo_t **todo = ctx->enter_stack;
++    size_t cap = ctx->enter_stack_cap;
++    size_t top = 0;
++    NS_PUSH(todo, cap, top, v);
+ 
+-    while (!LIST_IS_EMPTY(&todo)) {
+-	v = LIST_POP_BACK(&todo);
++    while (top > 0) {
++	v = todo[--top];
++	const int v_lim = v->lim;
+ 
+-	for (int i = 0; (e = ND_out(v).list[i]); i++) {
++	for (int i = 0; (e = v->out.list[i]); i++) {
+ 	    if (!TREE_EDGE(e)) {
+@@ -284,11 +304,13 @@ static edge_t *dfs_enter_outedge(node_t *v, int Low, int Lim) {
+ 		}
+-	    } else if (ND_lim(aghead(e)) < ND_lim(v))
+-		LIST_APPEND(&todo, aghead(e));
++	    } else if (ND_lim(aghead(e)) < v_lim)
++		NS_PUSH(todo, cap, top, NI(aghead(e)));
+ 	}
+-	for (int i = 0; (e = ND_tree_in(v).list[i]) && Slack > 0; i++)
+-	    if (ND_lim(agtail(e)) < ND_lim(v))
+-		LIST_APPEND(&todo, agtail(e));
++	Agnodeinfo_t **const nbr = tree_nbr(ctx, v->tree_in);
++	for (int i = 0; v->tree_in.list[i] != NULL && Slack > 0; i++)
++	    if (nbr[i]->lim < v_lim)
++		NS_PUSH(todo, cap, top, nbr[i]);
+ 
+     }
+-    LIST_FREE(&todo);
++    ctx->enter_stack = todo;
++    ctx->enter_stack_cap = cap;
+ 
+@@ -297,3 +319,4 @@ static edge_t *dfs_enter_outedge(node_t *v, int Low, int Lim) {
+ 
+-static edge_t *dfs_enter_inedge(node_t *v, int Low, int Lim) {
++static edge_t *dfs_enter_inedge(network_simplex_ctx_t *ctx, Agnodeinfo_t *v,
++                                int Low, int Lim) {
+     edge_t *e;
+@@ -303,9 +326,12 @@ static edge_t *dfs_enter_inedge(node_t *v, int Low, int Lim) {
+ 
+-    LIST(node_t *) todo = {0};
+-    LIST_APPEND(&todo, v);
++    Agnodeinfo_t **todo = ctx->enter_stack;
++    size_t cap = ctx->enter_stack_cap;
++    size_t top = 0;
++    NS_PUSH(todo, cap, top, v);
+ 
+-    while (!LIST_IS_EMPTY(&todo)) {
+-	v = LIST_POP_BACK(&todo);
++    while (top > 0) {
++	v = todo[--top];
++	const int v_lim = v->lim;
+ 
+-	for (int i = 0; (e = ND_in(v).list[i]); i++) {
++	for (int i = 0; (e = v->in.list[i]); i++) {
+ 	    if (!TREE_EDGE(e)) {
+@@ -318,11 +344,13 @@ static edge_t *dfs_enter_inedge(node_t *v, int Low, int Lim) {
+ 		}
+-	    } else if (ND_lim(agtail(e)) < ND_lim(v))
+-		LIST_APPEND(&todo, agtail(e));
++	    } else if (ND_lim(agtail(e)) < v_lim)
++		NS_PUSH(todo, cap, top, NI(agtail(e)));
+ 	}
+-	for (int i = 0; (e = ND_tree_out(v).list[i]) && Slack > 0; i++)
+-	    if (ND_lim(aghead(e)) < ND_lim(v))
+-		LIST_APPEND(&todo, aghead(e));
++	Agnodeinfo_t **const nbr = tree_nbr(ctx, v->tree_out);
++	for (int i = 0; v->tree_out.list[i] != NULL && Slack > 0; i++)
++	    if (nbr[i]->lim < v_lim)
++		NS_PUSH(todo, cap, top, nbr[i]);
+ 
+     }
+-    LIST_FREE(&todo);
++    ctx->enter_stack = todo;
++    ctx->enter_stack_cap = cap;
+ 
+@@ -331,3 +359,3 @@ static edge_t *dfs_enter_inedge(node_t *v, int Low, int Lim) {
+ 
+-static edge_t *enter_edge(edge_t *e) {
++static edge_t *enter_edge(network_simplex_ctx_t *ctx, edge_t *e) {
+     node_t *v;
+@@ -344,4 +372,4 @@ static edge_t *enter_edge(edge_t *e) {
+     if (outsearch)
+-	return dfs_enter_outedge(v, ND_low(v), ND_lim(v));
+-    return dfs_enter_inedge(v, ND_low(v), ND_lim(v));
++	return dfs_enter_outedge(ctx, NI(v), ND_low(v), ND_lim(v));
++    return dfs_enter_inedge(ctx, NI(v), ND_low(v), ND_lim(v));
+ }
+@@ -821,2 +849,5 @@ static void reset_lists(network_simplex_ctx_t *ctx) {
+   ctx->tree_nbrs = NULL;
++  free(ctx->enter_stack);
++  ctx->enter_stack = NULL;
++  ctx->enter_stack_cap = 0;
+ }
+@@ -839,3 +870,3 @@ static void LR_balance(network_simplex_ctx_t *ctx)
+ 	if (ED_cutvalue(e) == 0) {
+-	    edge_t *const f = enter_edge(e);
++	    edge_t *const f = enter_edge(ctx, e);
+ 	    if (f == NULL)
+@@ -1064,3 +1095,3 @@ int rank2(graph_t * g, int balance, int maxiter, int search_size)
+     while ((e = leave_edge(&ctx))) {
+-	edge_t *const f = enter_edge(e);
++	edge_t *const f = enter_edge(&ctx, e);
+ 	const int err = update(&ctx, e, f);

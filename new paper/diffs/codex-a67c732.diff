@@ -1,0 +1,61 @@
+diff --git a/lib/dotgen/mincross.c b/lib/dotgen/mincross.c
+index 1aeb25626..bdd32ea5f 100644
+--- a/lib/dotgen/mincross.c
++++ b/lib/dotgen/mincross.c
+@@ -585,6 +585,10 @@ static bool left2right(graph_t *g, node_t *v, node_t *w) {
+ 
+-static int64_t in_cross(node_t *v, node_t *w) {
++/*
++ * Calculate the crossing counts for both possible orders of an adjacent pair.
++ * Each pair of incident edges can contribute to at most one of the two counts,
++ * so examining it once is equivalent to the two former in_cross() calls.
++ */
++static void in_cross_pair(node_t *v, node_t *w, int64_t *vw, int64_t *wv) {
+   edge_t **e1, **e2;
+   int inv, t;
+-  int64_t cross = 0;
+ 
+@@ -598,11 +602,13 @@ static int64_t in_cross(node_t *v, node_t *w) {
+       if (t > 0 || (t == 0 && ED_tail_port(*e1).p.x > ED_tail_port(*e2).p.x))
+-        cross += ED_xpenalty(*e1) * cnt;
++        *vw += ED_xpenalty(*e1) * cnt;
++      else if (t < 0 ||
++               (t == 0 && ED_tail_port(*e1).p.x < ED_tail_port(*e2).p.x))
++        *wv += ED_xpenalty(*e1) * cnt;
+     }
+   }
+-  return cross;
+ }
+ 
+-static int out_cross(node_t *v, node_t *w) {
++static void out_cross_pair(node_t *v, node_t *w, int *vw, int *wv) {
+   edge_t **e1, **e2;
+-  int inv, cross = 0, t;
++  int inv, t;
+ 
+@@ -615,6 +621,8 @@ static int out_cross(node_t *v, node_t *w) {
+       if (t > 0 || (t == 0 && ED_head_port(*e1).p.x > ED_head_port(*e2).p.x))
+-        cross += ED_xpenalty(*e1) * cnt;
++        *vw += ED_xpenalty(*e1) * cnt;
++      else if (t < 0 ||
++               (t == 0 && ED_head_port(*e1).p.x < ED_head_port(*e2).p.x))
++        *wv += ED_xpenalty(*e1) * cnt;
+     }
+   }
+-  return cross;
+ }
+@@ -648,8 +656,10 @@ static int64_t transpose_step(graph_t *g, int r, bool reverse) {
+     if (r > 0) {
+-      c0 += in_cross(v, w);
+-      c1 += in_cross(w, v);
++      in_cross_pair(v, w, &c0, &c1);
+     }
+     if (GD_rank(g)[r + 1].n > 0) {
+-      c0 += out_cross(v, w);
+-      c1 += out_cross(w, v);
++      int c0_out = 0;
++      int c1_out = 0;
++      out_cross_pair(v, w, &c0_out, &c1_out);
++      c0 += c0_out;
++      c1 += c1_out;
+     }

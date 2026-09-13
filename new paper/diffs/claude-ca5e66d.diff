@@ -1,0 +1,127 @@
+diff --git a/lib/dotgen/mincross.c b/lib/dotgen/mincross.c
+index 1aeb25626..49503bf4b 100644
+--- a/lib/dotgen/mincross.c
++++ b/lib/dotgen/mincross.c
+@@ -585,36 +585,80 @@ static bool left2right(graph_t *g, node_t *v, node_t *w) {
+ 
+-static int64_t in_cross(node_t *v, node_t *w) {
+-  edge_t **e1, **e2;
+-  int inv, t;
+-  int64_t cross = 0;
+-
+-  for (e2 = ND_in(w).list; *e2; e2++) {
+-    int cnt = ED_xpenalty(*e2);
++/// the only per-edge data the crossing counts below look at
++typedef struct {
++  int order;  ///< order of the edge's far endpoint within its rank
++  int pen;    ///< `ED_xpenalty` of the edge
++  double x;   ///< x of the port at the far end
++} xkey_t;
+ 
+-    inv = ND_order(agtail(*e2));
++enum { XKEY_STATIC = 64 }; ///< degree up to which `xkeys` needs no allocation
+ 
+-    for (e1 = ND_in(v).list; *e1; e1++) {
+-      t = ND_order(agtail(*e1)) - inv;
+-      if (t > 0 || (t == 0 && ED_tail_port(*e1).p.x > ED_tail_port(*e2).p.x))
+-        cross += ED_xpenalty(*e1) * cnt;
++/// gather the crossing-count keys of one end of a node's edge list
++///
++/// @param list NULL-terminated edge list to walk
++/// @param head Take the head end of each edge (otherwise the tail end)
++/// @param buf Caller-provided space for up to `XKEY_STATIC` entries
++/// @param n Set to the number of entries gathered
++/// @return `buf`, or a heap allocation the caller must free if it did not fit
++static xkey_t *xkeys(edge_t **list, bool head, xkey_t *buf, size_t *n) {
++  size_t len = 0;
++  for (edge_t **e = list; *e; e++) {
++    ++len;
++  }
++  xkey_t *const keys = len <= XKEY_STATIC ? buf : gv_calloc(len, sizeof(xkey_t));
++  for (size_t i = 0; i < len; ++i) {
++    edge_t *const e = list[i];
++    keys[i].pen = ED_xpenalty(e);
++    if (head) {
++      keys[i].order = ND_order(aghead(e));
++      keys[i].x = ED_head_port(e).p.x;
++    } else {
++      keys[i].order = ND_order(agtail(e));
++      keys[i].x = ED_tail_port(e).p.x;
+     }
+   }
+-  return cross;
++  *n = len;
++  return keys;
+ }
+ 
+-static int out_cross(node_t *v, node_t *w) {
+-  edge_t **e1, **e2;
+-  int inv, cross = 0, t;
+-
+-  for (e2 = ND_out(w).list; *e2; e2++) {
+-    int cnt = ED_xpenalty(*e2);
+-    inv = ND_order(aghead(*e2));
+-
+-    for (e1 = ND_out(v).list; *e1; e1++) {
+-      t = ND_order(aghead(*e1)) - inv;
+-      if (t > 0 || (t == 0 && ED_head_port(*e1).p.x > ED_head_port(*e2).p.x))
+-        cross += ED_xpenalty(*e1) * cnt;
++/** count crossings between two adjacent nodes' edge lists, both ways at once
++ *
++ * `c0` accumulates the crossings incurred with `v` left of `w` and `c1` those
++ * incurred with them swapped. Every pair of edges contributes to exactly one of
++ * the two (or to neither, when it is a tie), so both orderings can be counted
++ * in a single pass over the pairs instead of four separate nested loops with
++ * the edge attributes re-read from cold memory each time.
++ */
++static void cross_pair(edge_t **vlist, edge_t **wlist, bool head, int64_t *c0,
++                       int64_t *c1) {
++  xkey_t vbuf[XKEY_STATIC];
++  xkey_t wbuf[XKEY_STATIC];
++  size_t vn, wn;
++  xkey_t *const vk = xkeys(vlist, head, vbuf, &vn);
++  xkey_t *const wk = xkeys(wlist, head, wbuf, &wn);
++
++  int64_t a = 0;
++  int64_t b = 0;
++  for (size_t i = 0; i < vn; ++i) {
++    const int vo = vk[i].order;
++    const int vp = vk[i].pen;
++    const double vx = vk[i].x;
++    for (size_t j = 0; j < wn; ++j) {
++      const int t = vo - wk[j].order;
++      const int prod = vp * wk[j].pen;
++      if (t > 0 || (t == 0 && vx > wk[j].x)) {
++        a += prod;
++      } else if (t < 0 || (t == 0 && wk[j].x > vx)) {
++        b += prod;
++      }
+     }
+   }
+-  return cross;
++  *c0 += a;
++  *c1 += b;
++
++  if (vk != vbuf) {
++    free(vk);
++  }
++  if (wk != wbuf) {
++    free(wk);
++  }
+ }
+@@ -648,8 +692,11 @@ static int64_t transpose_step(graph_t *g, int r, bool reverse) {
+     if (r > 0) {
+-      c0 += in_cross(v, w);
+-      c1 += in_cross(w, v);
++      cross_pair(ND_in(v).list, ND_in(w).list, false, &c0, &c1);
+     }
+     if (GD_rank(g)[r + 1].n > 0) {
+-      c0 += out_cross(v, w);
+-      c1 += out_cross(w, v);
++      int64_t o0 = 0;
++      int64_t o1 = 0;
++      cross_pair(ND_out(v).list, ND_out(w).list, true, &o0, &o1);
++      /* `out_cross` accumulated in an `int`; preserve that truncation */
++      c0 += (int)o0;
++      c1 += (int)o1;
+     }

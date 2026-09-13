@@ -1,0 +1,68 @@
+diff --git a/lib/common/ns.c b/lib/common/ns.c
+index 44b809e50..81064561e 100644
+--- a/lib/common/ns.c
++++ b/lib/common/ns.c
+@@ -67,2 +67,4 @@ struct network_simplex_ctx_s {
+     size_t dfs_stack_cap;
++    /* backing storage for every node's `ND_tree_in`/`ND_tree_out` list */
++    edge_t **tree_lists;
+ };
+@@ -782,2 +784,4 @@ static void reset_lists(network_simplex_ctx_t *ctx) {
+   ctx->dfs_stack_cap = 0;
++  free(ctx->tree_lists);
++  ctx->tree_lists = NULL;
+ }
+@@ -788,4 +792,4 @@ freeTreeList (network_simplex_ctx_t *ctx, graph_t* g)
+     for (node_t *n = GD_nlist(g); n; n = ND_next(n)) {
+-	free_list(ND_tree_in(n));
+-	free_list(ND_tree_out(n));
++	ND_tree_in(n) = (elist){0};
++	ND_tree_out(n) = (elist){0};
+ 	ND_mark(n) = false;
+@@ -899,4 +903,4 @@ static void TB_balance(network_simplex_ctx_t *ctx)
+       }
+-      free_list(ND_tree_in(n));
+-      free_list(ND_tree_out(n));
++      ND_tree_in(n) = (elist){0};
++      ND_tree_out(n) = (elist){0};
+       ND_mark(n) = false;
+@@ -911,2 +915,3 @@ static bool init_graph(network_simplex_ctx_t *ctx, graph_t *g) {
+     *ctx = (network_simplex_ctx_t){.G = g};
++    size_t slots = 0;
+     for (node_t *n = GD_nlist(g); n; n = ND_next(n)) {
+@@ -914,4 +919,8 @@ static bool init_graph(network_simplex_ctx_t *ctx, graph_t *g) {
+ 	ctx->N_nodes++;
+-	for (size_t i = 0; ND_out(n).list[i]; i++)
++	size_t i;
++	for (i = 0; ND_out(n).list[i]; i++)
+ 	    ctx->N_edges++;
++	slots += i + 1;
++	for (i = 0; ND_in(n).list[i]; i++);
++	slots += i + 1;
+     }
+@@ -920,2 +929,11 @@ static bool init_graph(network_simplex_ctx_t *ctx, graph_t *g) {
+ 
++    /* The tree in/out lists are the hottest memory in network simplex;
++     * `dfs_range` walks them for every node it re-numbers. Carve them all out
++     * of one contiguous block, with each node's two lists adjacent, rather
++     * than making a separate small allocation per list and scattering them
++     * across the heap.
++     */
++    ctx->tree_lists = gv_calloc(slots + 1, sizeof(edge_t *));
++    edge_t **slot = ctx->tree_lists;
++
+     bool feasible = true;
+@@ -931,8 +949,11 @@ static bool init_graph(network_simplex_ctx_t *ctx, graph_t *g) {
+ 	}
+-	ND_tree_in(n).list = gv_calloc(i + 1, sizeof(edge_t *));
++	ND_tree_in(n).list = slot;
+ 	ND_tree_in(n).size = 0;
++	slot += i + 1;
+ 	for (i = 0; ND_out(n).list[i]; i++);
+-	ND_tree_out(n).list = gv_calloc(i + 1, sizeof(edge_t *));
++	ND_tree_out(n).list = slot;
+ 	ND_tree_out(n).size = 0;
++	slot += i + 1;
+     }
++    assert((size_t)(slot - ctx->tree_lists) == slots);
+     return feasible;

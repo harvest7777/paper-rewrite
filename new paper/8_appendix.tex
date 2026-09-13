@@ -1,0 +1,43 @@
+\section{Agent Commit Diffs}
+\label{app:diffs}
+
+Each listing is the verbatim output of \texttt{git show -U1} for one commit the
+agent made, in commit order.
+
+\lstset{language={}, keywordstyle={}, commentstyle={}, numbers=none}
+
+\subsection{Claude: \texttt{mincross.c}}
+
+\subsubsection*{\texttt{ca5e66d} dotgen transpose\_step: count both orderings in one pass}
+\lstinputlisting{diffs/claude-ca5e66d.diff}
+
+\subsubsection*{\texttt{3173bd6} dotgen transpose\_step: roll gathered keys along the rank}
+\lstinputlisting{diffs/claude-3173bd6.diff}
+
+\subsection{Claude: \texttt{ns.c}}
+
+\subsubsection*{\texttt{47b1745} ns dfs\_range: keep the current DFS frame in locals}
+\lstinputlisting{diffs/claude-47b1745.diff}
+
+\subsubsection*{\texttt{bb56496} ns init\_graph: allocate all tree lists from one block}
+\lstinputlisting{diffs/claude-bb56496.diff}
+
+\subsubsection*{\texttt{2c8a1d5} ns dfs\_range: cache each tree edge's far endpoint}
+\lstinputlisting{diffs/claude-2c8a1d5.diff}
+
+\subsubsection*{\texttt{5d3f279} ns enter\_edge: search over info records and cached neighbours}
+\lstinputlisting{diffs/claude-5d3f279.diff}
+
+\subsubsection*{\texttt{a22ea05} ns rerank: recurse over info records and cached neighbours}
+\lstinputlisting{diffs/claude-a22ea05.diff}
+
+\subsubsection*{\texttt{6120b63} ns dfs\_range: run over a dense 32-byte-per-node state array}
+\lstinputlisting{diffs/claude-6120b63.diff}
+
+\subsection{Codex: \texttt{mincross.c}}
+
+\subsubsection*{\texttt{a67c732} dot: combine paired transpose crossing scans}
+\lstinputlisting{diffs/codex-a67c732.diff}
+
+\subsubsection*{\texttt{eadec9e} dot: speed up rank crossing counts with prefix sums}
+\lstinputlisting{diffs/codex-eadec9e.diff}

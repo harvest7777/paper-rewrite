@@ -1,0 +1,150 @@
+diff --git a/lib/common/ns.c b/lib/common/ns.c
+index 81064561e..7bc46fcd5 100644
+--- a/lib/common/ns.c
++++ b/lib/common/ns.c
+@@ -50,6 +50,6 @@ static void check_cycles(graph_t * g);
+ typedef struct {
+-    node_t *v;   ///< node this frame is visiting
+-    edge_t *par; ///< tree edge connecting `v` to its parent
+-    int out_i;   ///< iteration counter through `ND_tree_out(v).list`
+-    int in_i;    ///< iteration counter through `ND_tree_in(v).list`
++    Agnodeinfo_t *v; ///< info record of the node this frame is visiting
++    edge_t *par;     ///< tree edge connecting `v` to its parent
++    int out_i;       ///< iteration counter through `v->tree_out.list`
++    int in_i;        ///< iteration counter through `v->tree_in.list`
+ } dfs_frame_t;
+@@ -69,4 +69,19 @@ struct network_simplex_ctx_s {
+     edge_t **tree_lists;
++    /* Shadow of `tree_lists`: for each slot holding a tree edge, the info
++     * record of that edge's *other* endpoint. `dfs_range` needs only the
++     * neighbour, and reaching it via `aghead`/`agtail` plus `AGDATA` is a
++     * three deep dependent pointer chase through two cold arrays. Caching it
++     * here turns that into a single load from a sequentially scanned array.
++     */
++    Agnodeinfo_t **tree_nbrs;
+ };
+ 
++/// info record of a node, which is where all the network simplex state lives
++#define NI(n) ((Agnodeinfo_t *)AGDATA(n))
++
++/// the slice of `network_simplex_ctx_t::tree_nbrs` shadowing a tree edge list
++static Agnodeinfo_t **tree_nbr(network_simplex_ctx_t *ctx, elist l) {
++    return ctx->tree_nbrs + (l.list - ctx->tree_lists);
++}
++
+ enum { SEARCHSIZE = 30 };
+@@ -84,2 +99,5 @@ static int add_tree_edge(network_simplex_ctx_t *ctx, edge_t * e)
+     ND_mark(n) = true;
++    Agnodeinfo_t **nbr = tree_nbr(ctx, ND_tree_out(n));
++    nbr[ND_tree_out(n).size] = NI(aghead(e));
++    nbr[ND_tree_out(n).size + 1] = NULL;
+     ND_tree_out(n).list[ND_tree_out(n).size++] = e;
+@@ -92,2 +110,5 @@ static int add_tree_edge(network_simplex_ctx_t *ctx, edge_t * e)
+     ND_mark(n) = true;
++    nbr = tree_nbr(ctx, ND_tree_in(n));
++    nbr[ND_tree_in(n).size] = NI(agtail(e));
++    nbr[ND_tree_in(n).size + 1] = NULL;
+     ND_tree_in(n).list[ND_tree_in(n).size++] = e;
+@@ -138,2 +159,3 @@ static void exchange_tree_edges(network_simplex_ctx_t *ctx, edge_t * e, edge_t *
+     node_t *n = agtail(e);
++    Agnodeinfo_t **nbr = tree_nbr(ctx, ND_tree_out(n));
+     size_t i = --ND_tree_out(n).size;
+@@ -145,3 +167,6 @@ static void exchange_tree_edges(network_simplex_ctx_t *ctx, edge_t * e, edge_t *
+     ND_tree_out(n).list[i] = NULL;
++    nbr[j] = nbr[i];
++    nbr[i] = NULL;
+     n = aghead(e);
++    nbr = tree_nbr(ctx, ND_tree_in(n));
+     i = --ND_tree_in(n).size;
+@@ -152,4 +177,9 @@ static void exchange_tree_edges(network_simplex_ctx_t *ctx, edge_t * e, edge_t *
+     ND_tree_in(n).list[i] = NULL;
++    nbr[j] = nbr[i];
++    nbr[i] = NULL;
+ 
+     n = agtail(f);
++    nbr = tree_nbr(ctx, ND_tree_out(n));
++    nbr[ND_tree_out(n).size] = NI(aghead(f));
++    nbr[ND_tree_out(n).size + 1] = NULL;
+     ND_tree_out(n).list[ND_tree_out(n).size++] = f;
+@@ -157,2 +187,5 @@ static void exchange_tree_edges(network_simplex_ctx_t *ctx, edge_t * e, edge_t *
+     n = aghead(f);
++    nbr = tree_nbr(ctx, ND_tree_in(n));
++    nbr[ND_tree_in(n).size] = NI(agtail(f));
++    nbr[ND_tree_in(n).size + 1] = NULL;
+     ND_tree_in(n).list[ND_tree_in(n).size++] = f;
+@@ -786,2 +819,4 @@ static void reset_lists(network_simplex_ctx_t *ctx) {
+   ctx->tree_lists = NULL;
++  free(ctx->tree_nbrs);
++  ctx->tree_nbrs = NULL;
+ }
+@@ -936,2 +971,3 @@ static bool init_graph(network_simplex_ctx_t *ctx, graph_t *g) {
+     ctx->tree_lists = gv_calloc(slots + 1, sizeof(edge_t *));
++    ctx->tree_nbrs = gv_calloc(slots + 1, sizeof(Agnodeinfo_t *));
+     edge_t **slot = ctx->tree_lists;
+@@ -1280,11 +1316,13 @@ static int dfs_range_init(node_t *v) {
+  */
+-static int dfs_range(network_simplex_ctx_t *ctx, node_t *v, edge_t *par,
++static int dfs_range(network_simplex_ctx_t *ctx, node_t *root, edge_t *par,
+                      int low)
+ {
+-    if (ND_par(v) == par && ND_low(v) == low) {
+-	return ND_lim(v) + 1;
++    Agnodeinfo_t *v = NI(root);
++
++    if (v->par == par && v->low == low) {
++	return v->lim + 1;
+     }
+ 
+-    ND_par(v) = par;
+-    ND_low(v) = low;
++    v->par = par;
++    v->low = low;
+ 
+@@ -1307,7 +1345,9 @@ static int dfs_range(network_simplex_ctx_t *ctx, node_t *v, edge_t *par,
+ 	edge_t *e;
+-	node_t *n = NULL;
++	Agnodeinfo_t *n = NULL;
+ 	edge_t *n_par = NULL;
+ 
+-	edge_t **list = ND_tree_out(v).list;
++	edge_t **list = v->tree_out.list;
++	Agnodeinfo_t **nbr = tree_nbr(ctx, v->tree_out);
+ 	while ((e = list[out_i]) != NULL) {
++	    Agnodeinfo_t *const w = nbr[out_i];
+ 	    ++out_i;
+@@ -1316,5 +1356,4 @@ static int dfs_range(network_simplex_ctx_t *ctx, node_t *v, edge_t *par,
+ 	    }
+-	    node_t *const w = aghead(e);
+-	    if (ND_par(w) == e && ND_low(w) == lim) {
+-		lim = ND_lim(w) + 1;
++	    if (w->par == e && w->low == lim) {
++		lim = w->lim + 1;
+ 		continue;
+@@ -1327,4 +1366,6 @@ static int dfs_range(network_simplex_ctx_t *ctx, node_t *v, edge_t *par,
+ 	if (n == NULL) {
+-	    list = ND_tree_in(v).list;
++	    list = v->tree_in.list;
++	    nbr = tree_nbr(ctx, v->tree_in);
+ 	    while ((e = list[in_i]) != NULL) {
++		Agnodeinfo_t *const w = nbr[in_i];
+ 		++in_i;
+@@ -1333,5 +1374,4 @@ static int dfs_range(network_simplex_ctx_t *ctx, node_t *v, edge_t *par,
+ 		}
+-		node_t *const w = agtail(e);
+-		if (ND_par(w) == e && ND_low(w) == lim) {
+-		    lim = ND_lim(w) + 1;
++		if (w->par == e && w->low == lim) {
++		    lim = w->lim + 1;
+ 		    continue;
+@@ -1351,4 +1391,4 @@ static int dfs_range(network_simplex_ctx_t *ctx, node_t *v, edge_t *par,
+ 	                                 .in_i = in_i};
+-	    ND_par(n) = n_par;
+-	    ND_low(n) = lim;
++	    n->par = n_par;
++	    n->low = lim;
+ 	    v = n;
+@@ -1360,3 +1400,3 @@ static int dfs_range(network_simplex_ctx_t *ctx, node_t *v, edge_t *par,
+ 
+-	ND_lim(v) = lim;
++	v->lim = lim;
+ 
