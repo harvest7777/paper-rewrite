@@ -65,16 +65,46 @@ support it, and that the phase composition bounds it.
 
 \subsection{Cost}
 
-The two runs differed substantially in resource consumption. Claude ran for
-4\,h\,27\,m of working time and consumed roughly $9.2 \times 10^7$ tokens; Codex
-ran 23\,m\,42\,s wall-clock and consumed roughly $5.1 \times 10^6$. That is more
-than an order of magnitude in both dimensions for a $1.27\times$ difference in
-delivered layout time at 5{,}000 nodes, widening to $1.36\times$ at 10{,}000.
+\begin{table}[htbp]
+\centering
+\caption{Claude run cost, as reported by its session log.}
+\label{tab:cost-claude}
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Model                 & \texttt{claude-opus-5} \\
+Working time          & 4\,h\,27\,m\,3\,s \\
+\midrule
+Input tokens          & 730 \\
+Output tokens         & 620,448 \\
+Cache creation tokens & 1,270,669 \\
+Cache read tokens     & 89,851,473 \\
+\midrule
+Total tokens          & 91,743,320 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-We report these figures but caution against reading them as a like-for-like
-comparison. The two systems account for tokens differently --- one folds cached
-input into its input total, the other reports them separately --- and the time
-figures are not the same measurement, one excluding time spent waiting on user
-input and the other being raw elapsed time. Whether the additional effort was
-\emph{necessary} for the additional result, or merely accompanied it, is not
-something a single run of each can answer.
+\begin{table}[htbp]
+\centering
+\caption{Codex run cost, as reported by its session log. Cached input is a
+subset of input; reasoning output is a subset of output.}
+\label{tab:cost-codex}
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Model                     & \texttt{gpt-5.6-terra} \\
+Working time              & 23\,m\,42\,s \\
+\midrule
+Input tokens              & 5,114,035 \\
+\quad Cached input tokens & 4,985,600 \\
+Output tokens             & 20,826 \\
+\quad Reasoning tokens    & 4,555 \\
+Cache-write tokens        & 0 \\
+\midrule
+Total tokens              & 5,134,861 \\
+\bottomrule
+\end{tabular}
+\end{table}
