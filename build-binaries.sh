@@ -9,6 +9,11 @@ for dir in sandboxes/*; do
   src="$dir/graphviz"
   echo "==> $name"
 
+  if [ -d "binaries/$name" ]; then
+    echo "SKIP $name (binaries/$name exists)"
+    continue
+  fi
+
   # have to hard pass a bison path because apples is < 3.0 which graphviz requries
   if cmake -S "$src" -B "builds/$name" \
        -DCMAKE_INSTALL_PREFIX="$PWD/binaries/$name" \
