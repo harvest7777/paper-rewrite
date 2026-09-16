@@ -129,8 +129,13 @@ ax.set_yticklabels([NICE[t] for t in TOPOLOGIES], fontsize=8)
 ax.set_xlabel("share of baseline layout time (%)")
 ax.set_xlim(0, 100)
 ax.grid(False)
-ax.set_title("Crossing minimization is 11% of the work on one shape and 64% on "
-             "another,\nat identical node count", loc="left")
+mincross_shares = []
+for topo in TOPOLOGIES:
+    means = {p: st.mean(PH[topo]["timestamped"][p]) for p in PHASES}
+    mincross_shares.append(means["mincross"] / sum(means.values()) * 100)
+ax.set_title(f"Crossing minimization is {min(mincross_shares):.0f}% of the work on one "
+             f"shape and {max(mincross_shares):.0f}% on another,\nat identical node count",
+             loc="left")
 save(fig, "fig2_phase_composition")
 
 
