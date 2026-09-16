@@ -18,11 +18,11 @@ Everything except the agents' own work lives in one repository,
 \item \texttt{01-build-binaries.sh}, \texttt{02-run.sh},
       \texttt{03-test.sh} --- the build, benchmark and correctness harnesses,
       numbered in the order they are run.
-\item \texttt{results/} --- the raw measurements, included as a submodule of
-      \url{https://github.com/harvest7777/graphviz-results-dump}: per-run
-      \texttt{hyperfine} JSON, per-run phase logs, the thread-scaling run, the
-      correctness sweeps with their raw output, and \texttt{dumps/}, holding one
-      session dump per run.
+\item \texttt{results/} --- every raw measurement behind this paper: the per-run
+      \texttt{hyperfine} JSON, the per-run phase logs in \texttt{phases/}, the
+      thread-scaling run in \texttt{thread-scaling/}, the correctness sweeps and
+      their raw output in \texttt{correctness/}, and one session dump per run in
+      \texttt{dumps/}.
 \end{itemize}
 
 Each agent run has its own repository, because each was a separate GraphViz
