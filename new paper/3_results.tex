@@ -371,12 +371,23 @@ reproducible against itself on these inputs, so byte comparison is meaningless
 for it, and baseline \texttt{circo} does not finish one test graph within an
 hour.
 
-Because four of the binaries create threads, byte-identity at one thread count
-is not sufficient. We repeated the whole test-suite comparison for both threaded
-binaries at \texttt{GV\_THREADS} of 1, 2 and 8 and at their own default:
-2{,}080 further comparisons, all identical. Output does not depend on thread
-count in anything we ran, which is evidence for the agents' determinism
-arguments but not a proof of race-freedom --- see Section~\ref{sec:limitations}.
+Two of the binaries create threads, so byte-identity at one thread count is not
+sufficient for them. We repeated the whole test-suite comparison for both at
+\texttt{GV\_THREADS} of 1, 2 and 8 and at their own default: 2{,}080 further
+comparisons, all identical.
+
+That check on its own would prove less than it appears to. Both binaries gate
+their concurrency behind input-size thresholds --- 16{,}384- and 32{,}768-node
+subtrees in one, 2{,}000 nodes in the other --- and almost every graph in
+\texttt{tests/graphs} is far below all of them, so those 2{,}080 comparisons
+largely exercise the serial paths. We therefore repeated the comparison on the
+three evaluation graphs, which are large enough to execute the parallel code:
+each binary at \texttt{GV\_THREADS} of 1, 2, 4, 8, 12 and its own default, three
+repetitions each, for 108 comparisons. All are identical to the baseline.
+
+Output does not depend on thread count in anything we ran, which is evidence for
+the agents' determinism arguments but not a proof of race-freedom --- see
+Section~\ref{sec:limitations}.
 
 The remaining three binaries need no such check. Their layout sources are
 identical to the baseline's (Section~\ref{sec:noship}), so their output is

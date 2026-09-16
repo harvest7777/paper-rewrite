@@ -26,14 +26,22 @@ test on a machine with a different core mix, so we cannot say where either
 design stops scaling or how it behaves when cores are contended.
 
 \paragraph{We have not verified the absence of data races.}
-Four of the binaries we measured create threads. Our evidence that they are safe
-is byte-identical output at one, two, eight and default threads across all 260
-test graphs --- 2{,}080 comparisons with no mismatch --- plus the safety
-arguments in the agents' own reports. That is consistent with race-freedom and
-is not proof of it. Both Claude parallelism runs report that ThreadSanitizer
-could not be made to run on this machine, and we did not run one either. A race
-that never manifests in these runs on this hardware would not appear in any
-number we report.
+Two of the binaries we measured create threads. Our evidence that they are safe
+is byte-identical output across 2{,}188 comparisons that vary thread count ---
+the 260 test graphs at one, two, eight and default threads, and the three
+evaluation graphs at one, two, four, eight, twelve and default threads with
+three repetitions each --- plus the safety arguments in the agents' own reports.
+
+That is consistent with race-freedom and is not proof of it, for three reasons.
+Byte-identical output is an end-state check: a race that corrupts state the
+layout later overwrites, or that loses to the same winner every time on this
+hardware, produces identical bytes. Three repetitions per configuration is a
+thin sample for a timing-dependent fault. And every run was on one machine with
+one core mix, so schedules that only occur under contention, on more cores, or
+on a weaker memory model were never attempted. Both Claude parallelism runs
+report that ThreadSanitizer could not be made to run on this machine, and we did
+not run one either. Running these inputs under a dynamic race detector on Linux
+is the check this paper is missing.
 
 \paragraph{Synthetic graphs at one node count.}
 All three shapes come from the same generator, which produces uniform rank
