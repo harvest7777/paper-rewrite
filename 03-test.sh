@@ -3,7 +3,7 @@ set -e
 cd "$(dirname "$0")"
 
 BASELINE=timestamped
-AGENTS=(claude codex)
+AGENTS=(claude_2 codex_2)
 ENGINES=(dot neato fdp twopi circo)
 GRAPHS=sandboxes/$BASELINE/graphviz/tests/graphs
 # Seconds before a single layout is killed. Some engines (circo on b100.gv) run

@@ -1,5 +1,6 @@
 sandboxes/
 binaries/
 builds/
+.DS_Store
 .venv*
 __pycache__/
