@@ -1,18 +1,51 @@
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{Both agents found the bottleneck; only one kept going}
+\subsection{Finding the bottleneck was not the hard part}
 
-Neither agent was told where to look, and both went to crossing minimization.
-Working in isolation, both arrived at the same transformation: fusing the two
-symmetric crossing-count passes. Locating the expensive phase is evidently not
-the hard part.
+No run was told where to look, and none of the eight failed to find expensive
+code. Every one profiled first, and every report names the same two regions:
+crossing minimization, and the network simplex that serves both ranking and
+coordinate assignment. Several runs independently arrived at the same
+transformation --- fusing the two symmetric crossing-count passes into one.
+Locating the work is evidently not what separates these runs.
 
-What separates them is how far they went next. Codex stopped at the phase it
-identified. Claude continued into network simplex, which serves both ranking and
-coordinate assignment, and that accounts for its entire margin --- the same
-pattern on three workloads with very different composition, not an inference
-from one measurement.
+Breadth is. All four Claude runs went into network simplex as well as crossing
+minimization, and that is where their margin comes from: ranking and coordinate
+assignment improve in every Claude run and in no Codex run
+(Table~\ref{tab:phases}). Codex's one shipping run stopped at the phase it
+identified first. The pattern holds across three workloads of very different
+composition, so it is not an inference from a single measurement.
+
+The reports also show the two agents disagreeing about the same code rather than
+seeing different things. Both Codex parallelism runs argue that
+\texttt{transpose} cannot be parallelized without changing output, because each
+accepted swap changes the state the next comparison reads, and that network
+simplex pivots are inherently sequential. Both Claude parallelism runs
+parallelized exactly that code anyway --- one with a speculative sweep schedule
+and an undo log, the other by running two independent ordering passes on private
+copies --- and produced byte-identical output. The disagreement is not about
+where the time goes. It is about whether a dependency is a hard barrier or an
+engineering problem.
+
+\subsection{Agents optimize the workload they imagine}
+
+No run could see our evaluation graphs, so each generated its own. Every one
+chose graphs larger than ours: 5{,}000 to 25{,}000 nodes, against our fixed
+5{,}000.
+
+That choice has consequences we can measure. Claude's first parallelism run put
+its concurrency behind subtree-size thresholds of 32{,}768 and 16{,}384 nodes,
+tuned on graphs where network simplex dominates. On our graphs those paths
+almost never execute, and its threads contribute between $1$ and $16\%$
+(Table~\ref{tab:threads}) --- it scores well on the strength of a serial rewrite
+that happens to travel. Claude's second parallelism run put its concurrency in
+\texttt{transpose} behind a 2{,}000-node threshold, which our graphs clear, and
+its threads contribute up to $2.32\times$.
+
+Neither run was tuned to our benchmark; one simply guessed a workload closer to
+it. A study that reported only end-to-end numbers would have called both of them
+parallel wins.
 
 \subsection{Why breadth mattered: the ceiling moves with shape}
 
@@ -23,32 +56,42 @@ Table~\ref{tab:composition} shows is a property of the graph's shape.
 \begin{table}[htbp]
 \centering
 \caption{What optimizing crossing minimization alone can achieve, against what
-each agent measured. \textbf{Ceiling:} baseline wall clock divided by (wall
-clock minus that phase's measured cost), i.e.\ the phase driven to zero.
-\textbf{Claude and Codex:} the end-to-end speedups from
-Table~\ref{tab:endtoend}, carrying the same dagger convention.}
+each run measured. \textbf{Ceiling:} baseline wall clock divided by (wall clock
+minus that phase's measured cost), i.e.\ the phase driven to zero. Remaining
+columns are the end-to-end speedups from Table~\ref{tab:endtoend}, carrying the
+same dagger convention. Entries above the ceiling are bold.}
 \label{tab:ceiling}
-\begin{tabular}{lrrr}
+\small
+\begin{tabular}{lrrrrrr}
 \toprule
-\textbf{Graph} & \textbf{Ceiling, crossing min.\ only} & \textbf{Claude} & \textbf{Codex} \\
+\textbf{Graph} & \textbf{Ceiling} & \textbf{Claude 1} & \textbf{Claude 2} & \textbf{Claude 1\,P} & \textbf{Claude 2\,P} & \textbf{Codex 1} \\
 \midrule
-sparse-deep   & 1.11$\times$ & \textbf{1.33$\times$} & 0.99$\times$$^\dagger$ \\
-default       & 1.69$\times$ & 1.50$\times$ & 1.16$\times$ \\
-dense-shallow & 2.58$\times$ & 1.84$\times$ & 1.29$\times$ \\
+sparse-deep   & 1.12$\times$ & \textbf{1.39} & \textbf{1.67} & \textbf{1.60} & \textbf{1.47} & 1.03$^\dagger$ \\
+default       & 1.72$\times$ & 1.55 & \textbf{1.98} & \textbf{2.10} & \textbf{2.19} & 1.16 \\
+dense-shallow & 2.63$\times$ & 1.89 & 2.35 & \textbf{2.75} & \textbf{2.91} & 1.33 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Codex sits below the ceiling on all three shapes, as an agent that optimized
-only that phase must. On sparse-deep the ceiling is $1.11\times$, so even a
-perfect crossing-minimization optimization would be nearly invisible end-to-end.
-Codex's $0.99\times$ is not a failed optimization --- it works, at $1.31\times$
-on the phase --- but a phase worth $11.5\%$ of the workload.
+Codex's one shipping run sits below the ceiling on all three shapes, as a run
+that optimized only that phase must. On sparse-deep the ceiling is
+$1.12\times$, so even a perfect crossing-minimization optimization would be
+nearly invisible end-to-end. Its $1.03\times$ is not a failed optimization ---
+the change works, at $1.32\times$ on the phase --- but the phase is worth
+$12.4\%$ of that workload.
 
-Claude \emph{exceeds} that ceiling, $1.33\times$ against $1.11\times$, which is
-only possible by improving other phases. That is the breadth argument at its
-sharpest: on that workload no amount of further work on the phase both agents
-found could have matched it.
+Every Claude run \emph{exceeds} that ceiling on sparse-deep, which is only
+possible by improving other phases. That is the breadth argument at its
+sharpest: on that workload no amount of further work on the phase every run
+found could have matched what they did.
+
+The ceiling also explains why the shapes rank the runs differently. On
+dense-shallow, where crossing minimization is $64.8\%$ of the work, the ceiling
+is $2.63\times$ and only the two parallelism runs clear it --- breadth matters
+less there, because the one phase everybody found is most of the workload. On
+sparse-deep the ceiling is so low that breadth is the only thing that matters.
+A single benchmark graph would have hidden whichever of those two effects it did
+not contain.
 
 The ceiling an optimization can reach is a property of the input, not the
 program, and a single benchmark graph cannot show that.
@@ -57,44 +100,65 @@ program, and a single benchmark graph cannot show that.
 
 \begin{table}[H]
 \centering
-\caption{Claude run cost, as reported by its session log.}
+\caption{Cost of each Claude run, as reported by its session log. All four ran
+\texttt{claude-opus-5}. \textbf{P} marks the parallelism prompt.}
 \label{tab:cost-claude}
-\begin{tabular}{lr}
+\small
+\begin{tabular}{lrrrr}
 \toprule
-\textbf{Metric} & \textbf{Value} \\
+\textbf{Metric} & \textbf{Claude 1} & \textbf{Claude 2} & \textbf{Claude 1\,P} & \textbf{Claude 2\,P} \\
 \midrule
-Model                 & \texttt{claude-opus-5} \\
-Working time          & 4\,h\,27\,m\,3\,s \\
+Working time          & 4\,h\,27\,m & 1\,h\,16\,m & 3\,h\,23\,m & 5\,h\,22\,m \\
 \midrule
-Input tokens          & 730 \\
-Output tokens         & 620,448 \\
-Cache creation tokens & 1,270,669 \\
-Cache read tokens     & 89,851,473 \\
+Input tokens          & 730        & 2,838      & 3,914      & 3,848 \\
+Output tokens         & 620,448    & 274,861    & 229,374    & 212,306 \\
+Cache creation        & 1,270,669  & 437,852    & 805,875    & 667,657 \\
+Cache read            & 89,851,473 & 26,712,125 & 36,947,373 & 40,939,987 \\
 \midrule
-Total tokens          & 91,743,320 \\
+Total tokens          & 91,743,320 & 27,427,676 & 37,986,536 & 41,823,798 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[H]
 \centering
-\caption{Codex run cost, as reported by its session log. Cached input is a
-subset of input; reasoning output is a subset of output.}
+\caption{Cost of each Codex run, as reported by its session log. All four ran
+\texttt{gpt-5.6-terra}. Cached input is a subset of input; reasoning output is a
+subset of output. \textbf{P} marks the parallelism prompt.}
 \label{tab:cost-codex}
-\begin{tabular}{lr}
+\small
+\begin{tabular}{lrrrr}
 \toprule
-\textbf{Metric} & \textbf{Value} \\
+\textbf{Metric} & \textbf{Codex 1} & \textbf{Codex 2} & \textbf{Codex 1\,P} & \textbf{Codex 2\,P} \\
 \midrule
-Model                     & \texttt{gpt-5.6-terra} \\
-Working time              & 23\,m\,42\,s \\
+Working time              & 23\,m\,42\,s & 12\,m\,55\,s & 9\,m\,50\,s & 9\,m\,30\,s \\
 \midrule
-Input tokens              & 5,114,035 \\
-\quad Cached input tokens & 4,985,600 \\
-Output tokens             & 20,826 \\
-\quad Reasoning tokens    & 4,555 \\
-Cache-write tokens        & 0 \\
+Input tokens              & 5,114,035 & 2,406,206 & 1,684,133 & 1,634,219 \\
+\quad of which cached     & 4,985,600 & 2,313,728 & 1,592,064 & 1,559,808 \\
+Output tokens             & 20,826    & 17,782    & 15,144    & 13,443 \\
+\quad of which reasoning  & 4,555     & 4,101     & 5,684     & 3,734 \\
+Cache-write tokens        & 0         & 0         & 0         & 0 \\
 \midrule
-Total tokens              & 5,134,861 \\
+Total tokens              & 5,134,861 & 2,423,988 & 1,699,277 & 1,647,662 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+The gap is consistent and large. Claude's runs took between $1$ and $5$ hours
+and between $27$ and $92$ million tokens; Codex's took between $9$ and $24$
+minutes and between $1.6$ and $5.1$ million. The cheapest Claude run cost
+roughly five times the most expensive Codex run in tokens, and eight times in
+wall time.
+
+Both columns move together within each agent, and neither predicts the result.
+Claude's most expensive run by tokens is its first, which is also its slowest
+binary of the four; its longest run by time is the one that produced the fastest
+binary. Codex's two cheapest runs shipped nothing, but so did its second run,
+which cost twice as much.
+
+These are not like-for-like counts. The two systems report different categories
+--- one folds cached reads into a total that dwarfs everything else, the other
+reports cache reads as a subset of input --- and a token is not a unit of work.
+We report them because they are what the logs record, and because the
+order-of-magnitude difference is too large to leave out, not because they
+support a cost-per-speedup comparison.
