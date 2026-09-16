@@ -24,24 +24,3 @@ useless passes every test. Prior work on learned compiler optimization
 \cite{cummins2023llmcompiler} targets transformations chosen in advance; here
 the choice of target is the object of study.
 
-\paragraph{Parallelizing crossing minimization.}
-Crossing minimization is the obvious place to put threads in this pipeline, and
-a $3.78\times$ speedup from OpenMP parallelizing it has been reported on this
-codebase~\cite{estrada2025openmp}. Our measurements separate two claims that a
-number like that can stand for.
-
-On the phase itself, speedups of that size are real. The two runs given the
-parallelism prompt reach $3.71$ and $4.31\times$ on crossing minimization on
-dense-shallow (Table~\ref{tab:phases}), and they do it while keeping
-\texttt{dot -Tdot} output byte-identical at every thread count we tested --- so
-the phase can be parallelized deterministically, which is not obvious in advance
-and which two other runs in this study argued was impractical.
-
-End to end is a different question, and it is bounded by how much of the
-workload that phase represents. Table~\ref{tab:ceiling} puts that ceiling
-between $1.12$ and $2.63\times$ depending on graph shape, whatever the
-implementation, and Section~\ref{sec:threads} measures what the threads
-themselves contribute: $2.32\times$ on the shape where crossing minimization is
-$64.8\%$ of the work, and $1.03\times$ on the shape where it is $12.4\%$. A
-phase-level speedup and an end-to-end speedup are different results, and on this
-pipeline the gap between them is set by the input.
