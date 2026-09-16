@@ -55,22 +55,30 @@
 Can a coding agent find and fix a real performance bottleneck on its own, with
 no hint about where the program spends its time? We gave two agents --- Claude
 Code and Codex --- the same untouched copy of GraphViz and the same instruction:
-make the \texttt{dot} layout program faster without changing what it draws.
-Neither was told which function or phase to look at, and neither could see the
-benchmark we would judge them on.
+make the \texttt{dot} layout program faster without changing what it draws. Each
+agent ran four times, eight runs in all, and no run could see the benchmark we
+would judge it on. Half the runs got an extra instruction to use the machine's
+idle cores.
 
-Both found the same hot spot: crossing minimization, one of the five phases
-\texttt{dot} runs. They differ in how far they went. Claude improved three
-phases and made layout $1.33\times$ to $1.84\times$ faster. Codex improved one
-phase and ranged from $1.29\times$ faster down to no measurable change at all.
+Every run found the same hot code. What differed was how far each went. All four
+Claude runs improved three of the five layout phases, making layout $1.39\times$
+to $2.91\times$ faster. Of the four Codex runs, one improved a single phase
+($1.03\times$ to $1.33\times$) and three shipped no code at all --- each built
+something, measured it, found it slower or not worth keeping, and reverted. We
+report those as decisions rather than failures, and they left us with three
+binaries that were the unmodified program under another name, which is a useful
+check on our own noise estimates.
 
-That last result is the interesting one. Codex's optimization works --- it makes
-that phase $1.31\times$ faster --- but on one of our graphs that phase is only
-$11.5\%$ of the work, so the gain vanishes end to end. How much a phase is worth
-depends on the shape of the graph, not its size: crossing minimization is
-$11.5\%$ of layout time on one shape and $64\%$ on another with the same number
-of nodes. We measured how far apart two runs of the \emph{unmodified} program
-land, and report only differences larger than that.
+Two results surprised us. Repeating a prompt changed the outcome more than
+changing the agent did: Claude's two identical runs differ by $1.39\times$
+against $1.67\times$ on one graph, and Codex's differ in whether anything
+shipped. And asking for concurrency is not the same as getting it --- two Claude
+runs look equally parallel end to end, but re-running each on a single thread
+shows threads account for $2.32\times$ of one and $16\%$ of the other. How much
+a phase is worth depends on the shape of the graph, not its size: crossing
+minimization is $12.4\%$ of layout time on one shape and $64.8\%$ on another
+with the same number of nodes. We measured how far apart two runs of the
+\emph{unmodified} program land, and report only differences larger than that.
 \end{abstract}
 
 \input{0_introduction}

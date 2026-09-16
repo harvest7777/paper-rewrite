@@ -1,31 +1,44 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-Two coding agents, given an identical checkout of GraphViz and a prompt naming
-no target, both located crossing minimization as the expensive phase and both
-produced output-preserving improvements to it. Finding the bottleneck was
+Eight agent runs, given identical checkouts of GraphViz and prompts naming no
+target, all located the same expensive code. Finding the bottleneck was
 evidently not the difficult part of the task.
 
-What separated them was breadth. Claude carried on into network simplex, which
-serves two further phases, and improves three of five on every shape we
-tested --- $1.33\times$ to $1.84\times$ end-to-end. Codex optimized the one
-phase it identified and measures $1.29\times$ down to $0.99\times$. On the
-sparsest shape, Codex's optimization works, at $1.31\times$ on its phase, and
-still yields nothing end-to-end because that phase is $11.5\%$ of the workload.
+What separated them was breadth. Every Claude run carried on into network
+simplex, which serves two further phases, and improves three of five on every
+shape we tested --- $1.39\times$ to $2.91\times$ end-to-end. Codex's one
+shipping run optimized the phase it identified first and measures $1.03\times$
+to $1.33\times$; on the sparsest shape that optimization works, at $1.32\times$
+on its phase, and still yields nothing end-to-end because the phase is $12.4\%$
+of the workload.
+
+Codex's other three runs shipped nothing, each after building a change,
+measuring it, and judging it not worth keeping. We take that at face value. It
+does mean a two-run study would have described whichever run it happened to
+draw, which is the strongest argument in this paper for repeating agent runs
+before characterizing an agent.
+
+Asking for concurrency changed what the agents built but not uniformly what it
+bought. Two Claude runs under that prompt land close together end-to-end while
+only one of them owes its result to threads, and the same prompt moved Codex to
+prototype concurrency three times and ship it zero times.
 
 The ceiling an optimization can reach is a property of the input, not of the
-program. At fixed node count, crossing minimization ranges from $11.5\%$ to
-$64\%$ of layout time across our three shapes, and on the sparsest one
-Claude exceeds what any crossing-minimization optimization could achieve. A
+program. At fixed node count, crossing minimization ranges from $12.4\%$ to
+$64.8\%$ of layout time across our three shapes, and on the sparsest one every
+Claude run exceeds what any crossing-minimization optimization could achieve. A
 single benchmark graph cannot show this.
 
 The results are modest and we have tried to report them at the size they are.
 The protocol may be the more durable contribution: balance command ordering and
 take the floor from the baseline's own spread across those orderings; keep the
 evaluation harness out of the agents' reach; forbid the shortcuts that
-manufacture speedups; measure phases directly rather than by subtraction. Each
-caught something a simpler design would have reported as a finding.
+manufacture speedups; measure phases directly rather than by subtraction;
+re-measure threaded binaries at one thread before calling a result parallel.
+Each caught something a simpler design would have reported as a finding.
 
-Immediate future work is to repeat both agent runs to establish whether the
-ordering is stable, extend to a second graph size and to non-synthetic inputs,
-and complete the correctness checks named in Section~\ref{sec:limitations}.
+Immediate future work is to extend to a second graph size and to non-synthetic
+inputs, to run the concurrent code under a dynamic race detector on a platform
+where one works, and to complete the correctness checks named in
+Section~\ref{sec:limitations}.

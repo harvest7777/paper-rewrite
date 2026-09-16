@@ -23,29 +23,48 @@ observed; and its text output is deterministic, which makes ``the output did not
 change'' checkable rather than a judgment call.
 
 \paragraph{What we did.}
-Two agents --- Claude Code and Codex --- each received a pristine checkout of
-GraphViz pinned to commit \texttt{23b06521} and an identical prompt naming no
-target function, file, or phase. The prompt explicitly forbade the shortcuts
-that would fake a win: caching layout results, special-casing inputs, and
-reducing the iteration counts that govern layout quality. Neither agent had
-access to the evaluation harness or the graphs it uses. We rebuilt each agent's
-result ourselves and measured it against an untouched baseline, on three graph shapes with the node count held fixed.
+Two agents --- Claude Code and Codex --- each ran four times, for eight runs in
+total. Each run received its own pristine checkout of GraphViz pinned to commit
+\texttt{23b06521} and a prompt naming no target function, file, or phase. Two
+runs per agent used a base prompt; the other two added a section asking the
+agent to treat concurrency as its primary strategy, because no run under the
+base prompt had introduced any. Every prompt forbade the shortcuts that would
+fake a win: caching layout results, special-casing inputs, and reducing the
+iteration counts that govern layout quality. No run had access to the evaluation
+harness, the graphs it uses, or any other run's sandbox. We rebuilt all eight
+results ourselves and measured them against an untouched baseline, on three
+graph shapes with the node count held fixed.
 
 \paragraph{What we found.}
-Both agents independently identified crossing minimization as the target, and
-both produced byte-identical layout output.
+No run failed to locate expensive code. All eight reports name the same two
+regions --- crossing minimization, and the network simplex serving ranking and
+coordinate assignment --- and every binary that shipped produced byte-identical
+layout output.
 
-They separate on breadth. Claude improved three phases --- ranking, crossing
-minimization, coordinate assignment --- measuring $1.33\times$ to $1.84\times$
-end-to-end. Codex improved crossing minimization only, measuring $1.29\times$
-down to $0.99\times$: on one shape its optimization is real but the phase is
-$11.5\%$ of the workload, so nothing survives to the end-to-end result.
+They separate on breadth. All four Claude runs went into network simplex as well
+and improved three phases, measuring $1.39\times$ to $2.91\times$ end-to-end.
+Of the four Codex runs, one improved crossing minimization only
+($1.03\times$ to $1.33\times$), and \emph{three shipped no layout code at all}:
+each built a change, measured it against the workload the prompt described,
+found it slower or unprofitable, and reverted it. Those three binaries are the
+baseline recompiled, which we report as a deliberate outcome rather than a
+failure --- and which gave us an unplanned null sample showing our per-phase
+noise floor is optimistic.
+
+Repetition mattered more than we expected. Claude's two base-prompt runs differ
+by $1.39\times$ against $1.67\times$ on one shape; Codex's differ in whether
+anything shipped at all. A single run of an agent does not characterize it.
+
+The parallelism prompt produced the subtlest result. Its two Claude runs land
+close together end-to-end, but re-measuring each at one thread shows only one is
+a parallel result: concurrency accounts for $2.32\times$ of one run's
+$2.83\times$ on the densest shape, and for $16\%$ of the other's.
 
 Which phase dominates is a property of the graph's \emph{shape}, not its size.
-At identical node count, crossing minimization ranges from $11.5\%$ to $64\%$ of
-layout time, setting a different ceiling on each workload --- and on the sparsest
-one Claude exceeds the ceiling available to any crossing-minimization
-optimization at all.
+At identical node count, crossing minimization ranges from $12.4\%$ to $64.8\%$
+of layout time, setting a different ceiling on each workload --- and on the
+sparsest one every Claude run exceeds the ceiling available to any
+crossing-minimization optimization at all.
 
 \paragraph{Contributions.}
 \begin{itemize}
@@ -53,11 +72,18 @@ optimization at all.
       command ordering, which also yields an empirical noise floor from the
       baseline's own spread across orderings, and a held-out evaluation
       harness.
-\item Phase-resolved measurements of two agents' work across three graph
-      shapes, with per-phase attribution and the shape-dependent ceiling
-      that bounds it.
-\item A complete artifact: pinned source, both agents' diffs and commit
-      histories, raw timing data, and the figure-generation scripts.
+\item Phase-resolved measurements of eight agent runs across three graph
+      shapes, with per-phase attribution and the shape-dependent ceiling that
+      bounds it, plus repetitions that show how far two runs of one prompt can
+      diverge.
+\item A thread-resolved decomposition of the runs that shipped concurrency,
+      separating what their threads buy from what their serial changes buy ---
+      the measurement that decides whether a parallel-looking result is one.
+\item Evidence that a floor built from the baseline against itself understates
+      cross-binary variation, from three shipped binaries that turned out to
+      contain no change.
+\item A complete artifact: pinned source, every run's diff, commit history and
+      report, raw timing data, and the figure-generation scripts.
 \end{itemize}
 
 Section~\ref{sec:related} covers background. Section~\ref{sec:method} describes
