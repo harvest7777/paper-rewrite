@@ -6,21 +6,26 @@ the binaries we compare. Everything below follows from that.
 
 \subsection{Sandboxes and build}
 
-Three clones of GraphViz, all at commit \texttt{23b06521}. One stays untouched
-as the baseline; the other two go to the agents, each on its own branch so the
-commit histories survive as artifacts.
+Nine clones of GraphViz, all at commit \texttt{23b06521}. One stays untouched as
+the baseline. The other eight are agent runs: two agents $\times$ two prompts
+$\times$ two repetitions, each on its own branch so the commit histories survive
+as artifacts.
 
-All three were built with identical CMake flags
+The repetitions exist because a single run of an agent cannot distinguish what
+the agent tends to do from what it happened to do once. Every run started from
+the same commit with no knowledge of the others.
+
+All nine were built with identical CMake flags
 (\texttt{-DCMAKE\_BUILD\_TYPE=Release}, Poppler and GVEdit disabled) and
 installed to separate prefixes. We checked that each \texttt{dot} loads its own
 build of the layout libraries rather than a shared one.
 
-\subsection{The prompt}
+\subsection{The prompts}
 
-Both agents received the same text. It stated the goal --- make \texttt{dot}
-faster on large graphs without changing its output --- and deliberately named no
-function, file, or phase. Finding the hot code was part of the task under study.
-The prompt also:
+Every run received one of two prompts. The base prompt stated the goal --- make
+\texttt{dot} faster on large graphs without changing its output --- and
+deliberately named no function, file, or phase. Finding the hot code was part of
+the task under study. It also:
 
 \begin{itemize}
 \item described the target workload shape (large layered graphs with heavy edge
@@ -41,6 +46,21 @@ The iteration-count prohibition matters most. Crossing minimization is
 iteration-bounded, so cutting its limit yields a large, real, reproducible
 speedup that is not an optimization. The prompt asked for that to be reported as
 a finding rather than shipped as a change.
+
+The second prompt is the base prompt with one section added. It observes that
+\texttt{dot} is single-threaded while the machine's other cores sit idle, asks
+the agent to treat concurrency as the primary strategy rather than an
+afterthought, suggests where independent work might be found (loops over ranks,
+components, or candidate orderings), and states that output must not depend on
+thread count or scheduling. It also asks for thread counts and per-thread-count
+speedups in the report, and for an explanation wherever the agent concluded
+something could not usefully be parallelized. Everything else --- workload,
+constraints, disallowed shortcuts, deliverable --- is word for word the base
+prompt.
+
+We added it because no run under the base prompt introduced concurrency of any
+kind, in either agent. Whether that is what agents prefer or merely what they
+did here is exactly the sort of question a second prompt can separate.
 
 Agents worked autonomously with no turn or time limit, committing incrementally
 and writing a report of what they profiled, changed, abandoned and verified.
@@ -92,12 +112,21 @@ are looking for.
 
 \texttt{hyperfine} runs all repetitions of one command before starting the next,
 so a fixed order always hands the same binary the tail of any drift. We rotate
-the order so each binary occupies each position once, then pool: three orderings,
-30 timed runs per binary per graph.
+the starting position and pool: four orderings, 40 timed runs per binary per
+graph. With nine binaries a full rotation would take nine orderings; four is
+enough that no binary sits at the tail of drift in more than one of them, and it
+keeps a single invocation under an hour.
 
-The rotation also supplies the noise floor. The baseline is measured three
-times, once in each position, so the spread among its own means is what the
-protocol reports for a program compared against itself.
+The rotation also supplies the noise floor. The baseline is measured four times,
+once per ordering, so the spread among its own means is what the protocol
+reports for a program compared against itself.
+
+Binaries that use threads pick their own thread count, and we measure whatever
+they pick rather than imposing one: that is what a user running the binary
+would get. The two differ --- one defaults to every online core, the other to
+the performance cores only --- so Section~\ref{sec:threads} measures each of
+them again at one thread, which is what separates a threaded gain from a serial
+one.
 
 Two conventions hold throughout this paper. A \emph{mean} is always the
 arithmetic mean of individual timed runs, with warmup runs excluded. A
@@ -114,7 +143,7 @@ graphs, against the same competitors as the results it guards.
 \subsection{Phase instrumentation}
 
 Phase costs are measured inside the process. An identical patch --- applied by
-cherry-pick, so all three diffs match byte for byte --- reads a monotonic clock
+cherry-pick, so all nine diffs match byte for byte --- reads a monotonic clock
 around each phase and writes the elapsed time to standard error. It is off
 unless an environment variable is set, so layout output is unchanged and the
 correctness check below is unaffected.

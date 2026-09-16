@@ -45,13 +45,13 @@ cmake -S <sandbox> -B <build> \
   -DCMAKE_BUILD_TYPE=Release
 cmake --build <build> -j12 && cmake --install <build>
 \end{verbatim}
-Identical for all three sandboxes. On macOS a Bison $\geq 3.0$ path must be
+Identical for all nine sandboxes. On macOS a Bison $\geq 3.0$ path must be
 passed explicitly, as the system Bison is too old for the GraphViz build.
 
 \paragraph{Measurement.}
-\texttt{hyperfine} 1.20.0, 10 warmup and 10 timed runs, all binaries for a given
-graph in a single invocation, repeated over three command orderings so each
-binary occupies each position once. Graphs are produced by the fixed-seed
+\texttt{hyperfine} 1.20.0, 10 warmup and 10 timed runs, all nine binaries for a
+given graph in a single invocation, repeated over four command orderings with a
+different binary leading each time. Graphs are produced by the fixed-seed
 generator in the artifact repository. Raw per-run timings for every
 configuration are in the results repository as \texttt{hyperfine} JSON exports,
 alongside the per-run phase logs.
@@ -66,12 +66,13 @@ macOS 26.5.2, Apple Clang 17.0.0.
 
 \paragraph{Phase instrumentation.}
 The patch that reports per-phase timings is a single commit on
-\texttt{lib/dotgen/dotinit.c}, applied by cherry-pick to all three sandboxes so
-that the three diffs are byte-identical. It is inactive unless
+\texttt{lib/dotgen/dotinit.c}, applied by cherry-pick to all nine sandboxes so
+that the nine diffs are byte-identical. It is inactive unless
 \texttt{GV\_PHASE\_TIMING} is set in the environment.
 
 \paragraph{Agents.}
 \texttt{claude-opus-5} (Claude Code) and \texttt{gpt-5.6-terra} (Codex), each
-invoked once, autonomously, with the prompt reproduced in the artifact
-repository. Neither had network access to the evaluation harness or benchmark
-graphs.
+invoked four times autonomously --- two runs under each of the two prompts, both
+reproduced in the artifact repository. No run had network access to the
+evaluation harness or benchmark graphs, or to any other run's sandbox. Session
+logs giving each run's wall time and token usage are in the results repository.
