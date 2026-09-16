@@ -19,7 +19,7 @@ TOPOLOGIES = {
     "dense-shallow": {"per_layer": 200, "fanout": 4},
 }
 
-SIZES = [5000]
+SIZES = [5000, 10000]
 
 
 def generate(total_nodes, per_layer, fanout, path):

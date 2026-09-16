@@ -7,11 +7,22 @@ BINARIES=(
   claude claude_2 claude_parallel claude_parallel_2
   codex codex_2 codex_parallel codex_parallel_2
 )
+# Node count to benchmark. The graphs must already exist; generate them with
+#   cd graphs && python3 gen-graphs.py
+# Result filenames carry the graph name, so a 10000 run lands beside a 5000 one
+# without overwriting it, and the figure script (which globs per size) ignores
+# sizes it was not told about.
+#   SIZE=10000 ./02-run.sh
+SIZE="${SIZE:-5000}"
 GRAPHS=(
-  graphs/5000-default.gv
-  graphs/5000-sparse-deep.gv
-  graphs/5000-dense-shallow.gv
+  graphs/$SIZE-default.gv
+  graphs/$SIZE-sparse-deep.gv
+  graphs/$SIZE-dense-shallow.gv
 )
+
+for graph in "${GRAPHS[@]}"; do
+  [ -f "$graph" ] || { echo "missing $graph -- run gen-graphs.py first" >&2; exit 1; }
+done
 WARMUP=10
 RUNS=10
 # Result files carry this tag, so a later run with a different binary set lands
