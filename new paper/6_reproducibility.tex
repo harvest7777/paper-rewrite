@@ -6,9 +6,28 @@ estimated, extrapolated, or reported from a source other than the raw
 measurement files.
 
 \paragraph{Artifacts.}
-Each run has its own repository. The link gives that run's complete diff against
-the starting commit, together with the commit history the agent produced and the
-report it wrote.
+Everything except the agents' own work lives in one repository,
+\url{https://github.com/harvest7777/paper-rewrite}:
+
+\begin{itemize}
+\item \texttt{prompts/} --- both prompts, verbatim as the agents received them.
+\item \texttt{graphs/} --- the fixed-seed generator and the three evaluation
+      graphs it produces.
+\item \texttt{new paper/} --- this paper's source, and \texttt{figures/} within
+      it, which regenerates every figure from the raw measurements.
+\item \texttt{01-build-binaries.sh}, \texttt{02-run.sh},
+      \texttt{03-test.sh} --- the build, benchmark and correctness harnesses,
+      numbered in the order they are run.
+\item \texttt{results/} --- the raw measurements, included as a submodule of
+      \url{https://github.com/harvest7777/graphviz-results-dump}: per-run
+      \texttt{hyperfine} JSON, per-run phase logs, the thread-scaling run, the
+      correctness sweeps with their raw output, and \texttt{dumps/}, holding one
+      session dump per run.
+\end{itemize}
+
+Each agent run has its own repository, because each was a separate GraphViz
+checkout. The link gives that run's complete diff against the starting commit,
+together with the commit history the agent produced and the report it wrote.
 
 \begin{itemize}
 \item Claude, run 1: \\
@@ -27,8 +46,6 @@ report it wrote.
       \url{https://github.com/harvest7777/codex-parallel-graphviz-run/compare/main...agent-work}
 \item Codex, parallelism prompt, run 2: \\
       \url{https://github.com/harvest7777/codex-parallel-2-graphviz-run/compare/main...agent-work}
-\item Raw timing data and session dumps: \\
-      \url{https://github.com/harvest7777/graphviz-results-dump}
 \end{itemize}
 
 \paragraph{Source.}
@@ -51,14 +68,14 @@ passed explicitly, as the system Bison is too old for the GraphViz build.
 \paragraph{Measurement.}
 \texttt{hyperfine} 1.20.0, 10 warmup and 10 timed runs, all nine binaries for a
 given graph in a single invocation, repeated over four command orderings with a
-different binary leading each time. Graphs are produced by the fixed-seed
-generator in the artifact repository. Raw per-run timings for every
-configuration are in the results repository as \texttt{hyperfine} JSON exports,
-alongside the per-run phase logs.
+different binary leading each time. Graphs are produced by
+\texttt{graphs/gen-graphs.py}. Raw per-run timings for every configuration are
+in \texttt{results/} as \texttt{hyperfine} JSON exports, alongside the per-run
+phase logs in \texttt{results/phases/}.
 
 \paragraph{Figures.}
-Every figure is regenerated from the raw JSON by a single script in the artifact
-(\texttt{figures/make\_figures.py}).
+Every figure is regenerated from the raw JSON by a single script,
+\texttt{new paper/figures/make\_figures.py}.
 
 \paragraph{Environment.}
 Apple M4 Pro, 12 cores (8 performance, 4 efficiency), 24\,GB unified memory,
@@ -73,6 +90,7 @@ that the nine diffs are byte-identical. It is inactive unless
 \paragraph{Agents.}
 \texttt{claude-opus-5} (Claude Code) and \texttt{gpt-5.6-terra} (Codex), each
 invoked four times autonomously --- two runs under each of the two prompts, both
-reproduced in the artifact repository. No run had network access to the
-evaluation harness or benchmark graphs, or to any other run's sandbox. Session
-logs giving each run's wall time and token usage are in the results repository.
+in \texttt{prompts/}. No run had network access to the evaluation harness or
+benchmark graphs, or to any other run's sandbox. Session dumps giving each run's
+time and token usage are in \texttt{results/dumps/}, one file per run, named for
+the sandbox it came from.
