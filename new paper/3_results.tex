@@ -12,36 +12,44 @@ apparent speedup this protocol produces when nothing has changed.
 \centering
 \caption{Apparent speedup measured between the baseline and itself, per graph
 and per phase. \textbf{Each cell:} average the baseline's 10 timed runs within
-each of the three command orderings, giving three means; form all three pairwise
-ratios, larger divided by smaller; the cell is the largest of the three.}
+each of the four command orderings, giving four means; form all six pairwise
+ratios, larger divided by smaller; the cell is the largest of the six.}
 \label{tab:floor}
 \begin{tabular}{lrrr}
 \toprule
 \textbf{Measurement} & \textbf{sparse-deep} & \textbf{default} & \textbf{dense-shallow} \\
 \midrule
-End-to-end            & 1.006$\times$ & 1.019$\times$ & 1.006$\times$ \\
+End-to-end            & 1.034$\times$ & 1.033$\times$ & 1.069$\times$ \\
 \midrule
-Initialization        & 1.018$\times$ & 1.119$\times$ & 1.060$\times$ \\
-Ranking               & 1.020$\times$ & 1.015$\times$ & 1.003$\times$ \\
-Crossing minimization & 1.010$\times$ & 1.015$\times$ & 1.006$\times$ \\
-Coordinate assignment & 1.019$\times$ & 1.012$\times$ & 1.012$\times$ \\
-Spline routing        & 1.010$\times$ & 1.007$\times$ & 1.005$\times$ \\
+Initialization        & 1.022$\times$ & 1.029$\times$ & 1.090$\times$ \\
+Ranking               & 1.041$\times$ & 1.037$\times$ & 1.061$\times$ \\
+Crossing minimization & 1.025$\times$ & 1.052$\times$ & 1.062$\times$ \\
+Coordinate assignment & 1.039$\times$ & 1.078$\times$ & 1.155$\times$ \\
+Spline routing        & 1.055$\times$ & 1.030$\times$ & 1.066$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Worked example, crossing minimization on sparse-deep: the three per-ordering
-means are $61.47$, $62.07$ and $61.60$\,ms, giving pairwise ratios $1.010$,
-$1.002$ and $1.008$. The largest is the cell.
+Worked example, crossing minimization on sparse-deep: the four per-ordering
+means are $60.96$, $61.36$, $61.67$ and $60.18$\,ms, giving six pairwise ratios
+between $1.005$ and $1.025$. The largest is the cell.
 
-The floor is not uniform, which is why we report it per graph and per phase.
-Initialization on default is the noisiest cell at $1.119\times$ --- six times
-the crossing-minimization floor on the same graph --- because it is parsing and
-setup, sensitive to page cache. Pooling would let that one cell set a threshold
-everywhere.
+The floor is not uniform, which is why we report it per graph and per phase. The
+noisiest cell is coordinate assignment on dense-shallow at $1.155\times$, and it
+is not a property of that phase: the fourth ordering measures $295.0$\,ms
+against $255.4$, $259.5$ and $260.1$ in the other three, and the same ordering
+also inflates dense-shallow end-to-end ($3176.5$\,ms against roughly $2975$).
+One slow ordering raises every cell it touches. Pooling would let it set a
+threshold everywhere.
 
-Three ratios per cell is a small sample, so each is a rough bound. That is the
-cost of not conflating graphs.
+This floor is higher than the one we reported for a three-binary experiment on
+the same machine. Nine binaries take about three quarters of an hour per graph
+to measure, and a longer invocation gives thermal and scheduling drift more room
+to separate the orderings. A floor has to be measured inside the experiment it
+guards, not carried over from a smaller one.
+
+Six ratios per cell is still a small sample, so each is a rough bound. That is
+the cost of not conflating graphs.
 
 \textbf{Throughout the rest of this section, we treat a measured ratio as a
 change only if it exceeds the floor for that same phase and that same graph.}
@@ -58,9 +66,9 @@ being guarded.
 \label{sec:shape}
 
 Which phase dominates is not fixed. At identical node count, crossing
-minimization takes $11.5\%$ of layout time on one shape and $64.0\%$ on
-another, while coordinate assignment moves the other way, $42.1\%$ down to
-$9.4\%$. This sets a different ceiling on each workload, and it is why one
+minimization takes $12.4\%$ of layout time on one shape and $64.8\%$ on
+another, while coordinate assignment moves the other way, $44.3\%$ down to
+$9.2\%$. This sets a different ceiling on each workload, and it is why one
 optimization gives different end-to-end results on different graphs.
 
 Table~\ref{tab:composition} and Figure~\ref{fig:composition} give the baseline
@@ -70,7 +78,7 @@ cost of each phase.
 \centering
 \caption{Baseline phase cost. Phases are timed inside the process, so these are
 direct measurements rather than differences. \textbf{ms:} mean of that phase
-over all 30 timed runs (10 runs $\times$ 3 command orderings).
+over all 40 timed runs (10 runs $\times$ 4 command orderings).
 \textbf{share:} that phase's ms divided by the sum of the five phase ms.
 \textbf{Unaccounted:} wall clock minus that sum --- parsing and output writing,
 which happen outside the layout routine.}
@@ -81,15 +89,15 @@ which happen outside the layout routine.}
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 \textbf{Phase} & \textbf{ms} & \textbf{share} & \textbf{ms} & \textbf{share} & \textbf{ms} & \textbf{share} \\
 \midrule
-Initialization        & 148.0  & 27.7\% & 147.0  & 11.2\% & 155.4  & 5.2\%  \\
-Ranking               & 76.4   & 14.3\% & 266.9  & 20.4\% & 537.0  & 18.0\% \\
-Crossing minimization & 61.7   & 11.5\% & 575.0  & 43.9\% & 1907.8 & 64.0\% \\
-Coordinate assignment & 225.4  & 42.1\% & 251.5  & 19.2\% & 280.8  & 9.4\%  \\
-Spline routing        & 23.2   & 4.3\%  & 68.3   & 5.2\%  & 101.6  & 3.4\%  \\
+Initialization        & 114.8  & 23.3\% & 116.1  & 9.2\%  & 118.8  & 4.1\%  \\
+Ranking               & 75.7   & 15.3\% & 264.7  & 21.0\% & 532.5  & 18.4\% \\
+Crossing minimization & 61.0   & 12.4\% & 571.7  & 45.4\% & 1878.5 & 64.8\% \\
+Coordinate assignment & 218.7  & 44.3\% & 240.9  & 19.1\% & 267.5  & 9.2\%  \\
+Spline routing        & 23.3   & 4.7\%  & 66.3   & 5.3\%  & 99.5   & 3.4\%  \\
 \midrule
-Measured total        & 534.9  & 100\%  & 1308.7 & 100\%  & 2982.6 & 100\%  \\
-Wall clock            & 600.2  &        & 1412.9 &        & 3118.3 &        \\
-Unaccounted           & 65.3   & 10.9\% & 104.2  & 7.4\%  & 135.7  & 4.4\%  \\
+Measured total        & 493.6  & 100\%  & 1259.7 & 100\%  & 2896.7 & 100\%  \\
+Wall clock            & 557.5  &        & 1360.7 &        & 3029.1 &        \\
+Unaccounted           & 64.0   & 11.5\% & 101.0  & 7.4\%  & 132.4  & 4.4\%  \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -112,19 +120,28 @@ three binaries on each shape.
 
 \begin{table}[htbp]
 \centering
-\caption{End-to-end layout time. \textbf{Mean and sd:} over all 30 timed runs
-(10 runs $\times$ 3 command orderings). \textbf{Speedup:} baseline mean divided
-by that binary's mean. A dagger marks a ratio that does not exceed the
-end-to-end floor for that graph in Table~\ref{tab:floor}; we read those as no
-change.}
+\caption{End-to-end layout time in milliseconds. \textbf{Mean and sd:} over all
+40 timed runs (10 runs $\times$ 4 command orderings). \textbf{Speedup:} baseline
+mean divided by that binary's mean. A dagger marks a ratio that does not exceed
+the end-to-end floor for that graph in Table~\ref{tab:floor}; we read those as
+no change. \textbf{P} marks a run given the parallelism prompt.}
 \label{tab:endtoend}
+\small
 \begin{tabular}{lrrr}
 \toprule
-\textbf{Graph} & \textbf{Baseline} & \textbf{Claude} & \textbf{Codex} \\
+\textbf{Binary} & \textbf{sparse-deep} & \textbf{default} & \textbf{dense-shallow} \\
 \midrule
-sparse-deep   & $600.2 \pm 15.7$  & $450.4 \pm 30.2$ \; (\textbf{1.33$\times$}) & $605.6 \pm 40.2$ \; (0.99$\times$)$^\dagger$ \\
-default       & $1412.9 \pm 26.2$ & $943.1 \pm 33.4$ \; (\textbf{1.50$\times$}) & $1215.3 \pm 20.6$ \; (\textbf{1.16$\times$}) \\
-dense-shallow & $3118.3 \pm 38.8$ & $1693.8 \pm 26.1$ \; (\textbf{1.84$\times$}) & $2417.5 \pm 89.7$ \; (\textbf{1.29$\times$}) \\
+Baseline          & $557.5 \pm 9.6$ & $1360.7 \pm 40.0$ & $3029.1 \pm 99.9$ \\
+\midrule
+Claude 1          & $399.9 \pm 3.2$ \; (\textbf{1.39}) & $878.4 \pm 27.7$ \; (\textbf{1.55}) & $1603.3 \pm 64.3$ \; (\textbf{1.89}) \\
+Claude 2          & $334.6 \pm 3.6$ \; (\textbf{1.67}) & $685.7 \pm 20.1$ \; (\textbf{1.98}) & $1288.7 \pm 31.9$ \; (\textbf{2.35}) \\
+Claude 1\,P       & $349.3 \pm 4.1$ \; (\textbf{1.60}) & $646.8 \pm 26.2$ \; (\textbf{2.10}) & $1102.6 \pm 16.1$ \; (\textbf{2.75}) \\
+Claude 2\,P       & $378.2 \pm 7.0$ \; (\textbf{1.47}) & $620.8 \pm 30.3$ \; (\textbf{2.19}) & $1042.1 \pm 20.7$ \; (\textbf{2.91}) \\
+\midrule
+Codex 1           & $543.1 \pm 8.5$ \; (1.03)$^\dagger$ & $1172.7 \pm 36.5$ \; (\textbf{1.16}) & $2284.8 \pm 62.5$ \; (\textbf{1.33}) \\
+Codex 2           & $559.5 \pm 7.6$ \; (1.00)$^\dagger$ & $1325.4 \pm 49.2$ \; (1.03)$^\dagger$ & $3026.6 \pm 154.2$ \; (1.00)$^\dagger$ \\
+Codex 1\,P        & $555.8 \pm 11.0$ \; (1.00)$^\dagger$ & $1336.9 \pm 72.0$ \; (1.02)$^\dagger$ & $2974.4 \pm 80.3$ \; (1.02)$^\dagger$ \\
+Codex 2\,P        & $554.6 \pm 10.4$ \; (1.01)$^\dagger$ & $1351.8 \pm 108.7$ \; (1.01)$^\dagger$ & $3002.7 \pm 115.8$ \; (1.01)$^\dagger$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -136,18 +153,24 @@ dense-shallow & $3118.3 \pm 38.8$ & $1693.8 \pm 26.1$ \; (\textbf{1.84$\times$})
 \label{fig:endtoend}
 \end{figure}
 
-Claude improves every shape, $1.33\times$ to $1.84\times$. Codex ranges from
-$1.29\times$ down to $0.99\times$ --- on sparse-deep, indistinguishable from the
-unmodified baseline.
+All four Claude runs improve all three shapes, from $1.39\times$ to
+$2.91\times$, and every one of those twelve ratios clears its floor by a wide
+margin. Among the four Codex runs, only the first shows any improvement at all:
+$1.16\times$ on default and $1.33\times$ on dense-shallow, with sparse-deep
+inside the floor. The other three Codex runs are indistinguishable from the
+unmodified baseline on every graph.
 
-Five of the six ratios clear their graph's floor by a wide margin; the smallest
-surviving is Codex's $1.16\times$ on default against a floor of $1.019\times$.
-Codex on sparse-deep clears nothing, and we report it as no improvement rather
-than a small one.
+That is not a failure to optimize. Three of those four Codex runs shipped no
+layout code, by their own decision, and Section~\ref{sec:noship} treats them
+separately --- both because averaging them with the first would describe a
+binary nobody produced, and because a binary that is the baseline recompiled
+tells us something useful about the floor.
 
-Per-ordering figures rule out an artifact: Claude measures 1.31--1.35,
-1.46--1.53 and 1.82--1.86 across the three orderings, Codex 0.93--1.03,
-1.15--1.17 and 1.24--1.32.
+The spread between repetitions of the same prompt is larger than we expected.
+Claude's two base-prompt runs differ by $1.39$ against $1.67$, $1.55$ against
+$1.98$, and $1.89$ against $2.35$ --- the second run is faster on every shape,
+by more than the gap between some agents. Codex's two base-prompt runs differ
+more sharply still: one shipped two changes, the other shipped nothing.
 
 \subsection{Per-phase attribution}
 
@@ -156,23 +179,38 @@ result down by phase.
 
 \begin{table}[htbp]
 \centering
-\caption{Per-phase speedup over baseline. \textbf{Each entry:} the baseline's
-mean for that phase divided by that binary's mean for the same phase, each mean
-taken over all 30 timed runs. A dagger marks an entry that does not exceed the
-floor for that same phase and graph in Table~\ref{tab:floor}; those are no
-change, not small effects.}
+\caption{Per-phase speedup over baseline, for the five runs that shipped layout
+code. \textbf{Each entry:} the baseline's mean for that phase divided by that
+binary's mean for the same phase, each mean taken over all 40 timed runs. A
+dagger marks an entry that does not exceed the floor for that same phase and
+graph in Table~\ref{tab:floor}; those are no change, not small effects.
+\textbf{P} marks a run given the parallelism prompt.}
 \label{tab:phases}
-\begin{tabular}{lrrrrrr}
+\small
+\begin{tabular}{lrrrrr}
 \toprule
-& \multicolumn{2}{c}{\textbf{sparse-deep}} & \multicolumn{2}{c}{\textbf{default}} & \multicolumn{2}{c}{\textbf{dense-shallow}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
-\textbf{Phase} & \textbf{Claude} & \textbf{Codex} & \textbf{Claude} & \textbf{Codex} & \textbf{Claude} & \textbf{Codex} \\
+\textbf{Phase} & \textbf{Claude 1} & \textbf{Claude 2} & \textbf{Claude 1\,P} & \textbf{Claude 2\,P} & \textbf{Codex 1} \\
 \midrule
-Initialization        & 0.99$^\dagger$ & 0.94$^\dagger$ & 1.00$^\dagger$ & 1.01$^\dagger$ & 1.02$^\dagger$ & 0.99$^\dagger$ \\
-Ranking               & \textbf{2.46} & 0.98$^\dagger$ & \textbf{2.04} & 1.00$^\dagger$ & \textbf{2.05} & 0.98$^\dagger$ \\
-Crossing minimization & \textbf{1.47} & \textbf{1.31} & \textbf{1.87} & \textbf{1.52} & \textbf{2.34} & \textbf{1.61} \\
-Coordinate assignment & \textbf{1.62} & 0.97$^\dagger$ & \textbf{1.37} & 1.00$^\dagger$ & \textbf{1.25} & 0.98$^\dagger$ \\
-Spline routing        & 1.00$^\dagger$ & 1.00$^\dagger$ & 0.99$^\dagger$ & 0.99$^\dagger$ & 1.00$^\dagger$ & 0.99$^\dagger$ \\
+\multicolumn{6}{l}{\emph{sparse-deep}} \\
+Initialization        & 1.01$^\dagger$ & 1.01$^\dagger$ & 1.00$^\dagger$ & 1.00$^\dagger$ & 1.00$^\dagger$ \\
+Ranking               & \textbf{2.55} & \textbf{2.85} & \textbf{4.59} & \textbf{4.47} & 0.99$^\dagger$ \\
+Crossing minimization & \textbf{1.48} & \textbf{1.84} & \textbf{2.50} & \textbf{1.26} & \textbf{1.32} \\
+Coordinate assignment & \textbf{1.70} & \textbf{2.92} & \textbf{2.06} & \textbf{2.00} & 1.00$^\dagger$ \\
+Spline routing        & 1.01$^\dagger$ & 1.03$^\dagger$ & 1.01$^\dagger$ & 0.99$^\dagger$ & 1.01$^\dagger$ \\
+\midrule
+\multicolumn{6}{l}{\emph{default}} \\
+Initialization        & 1.00$^\dagger$ & 1.00$^\dagger$ & 0.97$^\dagger$ & 0.97$^\dagger$ & 0.98$^\dagger$ \\
+Ranking               & \textbf{2.07} & \textbf{2.53} & \textbf{4.36} & \textbf{4.19} & 0.99$^\dagger$ \\
+Crossing minimization & \textbf{1.91} & \textbf{2.67} & \textbf{3.28} & \textbf{3.85} & \textbf{1.53} \\
+Coordinate assignment & \textbf{1.42} & \textbf{2.84} & \textbf{1.97} & \textbf{2.05} & 0.99$^\dagger$ \\
+Spline routing        & 1.01$^\dagger$ & 1.01$^\dagger$ & 1.00$^\dagger$ & 0.98$^\dagger$ & 1.00$^\dagger$ \\
+\midrule
+\multicolumn{6}{l}{\emph{dense-shallow}} \\
+Initialization        & 1.01$^\dagger$ & 1.01$^\dagger$ & 1.02$^\dagger$ & 1.01$^\dagger$ & 1.02$^\dagger$ \\
+Ranking               & \textbf{2.10} & \textbf{2.50} & \textbf{4.57} & \textbf{4.30} & 1.01$^\dagger$ \\
+Crossing minimization & \textbf{2.37} & \textbf{2.95} & \textbf{3.71} & \textbf{4.31} & \textbf{1.64} \\
+Coordinate assignment & \textbf{1.28} & \textbf{2.89} & \textbf{1.98} & \textbf{2.03} & 1.02$^\dagger$ \\
+Spline routing        & 1.01$^\dagger$ & 1.02$^\dagger$ & 1.03$^\dagger$ & 1.00$^\dagger$ & 1.01$^\dagger$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -180,28 +218,142 @@ Spline routing        & 1.00$^\dagger$ & 1.00$^\dagger$ & 0.99$^\dagger$ & 0.99$
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig4_phase_speedup.pdf}
-\caption{Per-phase speedup. Claude improves ranking, crossing minimization and
-coordinate assignment on every shape; Codex improves crossing minimization
-only.}
+\caption{Per-phase speedup. Every Claude run improves ranking, crossing
+minimization and coordinate assignment on every shape; the one Codex run that
+shipped code improves crossing minimization only.}
 \label{fig:phasespeedup}
 \end{figure}
 
-Twelve of the 30 entries exceed their floor: Claude on ranking, crossing
-minimization and coordinate assignment across all three graphs, and Codex on
-crossing minimization across all three. Nothing sits near a boundary --- the
-smallest survivor is $1.25\times$ against a $1.012\times$ floor, the largest
-marked entry $1.02\times$ against $1.060\times$.
+Thirty-nine of the 75 entries exceed their floor, and they fall in an obvious
+pattern: every Claude run on ranking, crossing minimization and coordinate
+assignment on all three graphs, plus Codex's first run on crossing minimization
+on all three. Initialization and spline routing never clear anywhere, which is
+the control we expect --- no run touched either.
 
-So Claude improves three phases: ranking by roughly $2\times$ everywhere,
-crossing minimization by $1.47$ to $2.34\times$, coordinate assignment by $1.25$
-to $1.62\times$. Codex improves crossing minimization by $1.31$ to $1.61\times$
-and nothing else.
+The four Claude runs divide the same three phases differently. Ranking is where
+the parallelism-prompt runs separate themselves: $4.19$ to $4.59\times$ against
+$2.07$ to $2.85\times$ for the base-prompt runs. Crossing minimization ranges
+from $1.26$ to $4.31\times$, and coordinate assignment from $1.28$ to
+$2.92\times$, with no run dominating the others on all three.
 
-That is what produces its $0.99\times$ on sparse-deep. The optimization is real
-at $1.31\times$ on the phase, but the phase is $11.5\%$ of that workload.
+One entry is worth isolating. Claude's second parallelism run manages
+$4.31\times$ on crossing minimization on dense-shallow but only $1.26\times$ on
+sparse-deep --- the widest spread any run shows on any phase. Its concurrency is
+in \texttt{transpose}, which needs rank width to have anything to divide, and
+sparse-deep is ten nodes wide.
 
-Neither agent touches initialization or spline routing, as expected: both worked
-in \texttt{mincross.c}, and Claude also in \texttt{ns.c}.
+Codex's first run improves crossing minimization by $1.32$ to $1.64\times$ and
+nothing else. That is what produces its $1.03\times$ end-to-end on sparse-deep,
+inside the floor: the optimization is real on the phase, but the phase is
+$12.4\%$ of that workload.
+
+\subsection{The runs that shipped nothing}
+\label{sec:noship}
+
+Three of the four Codex runs changed no layout code at all. Their complete diff
+against the starting commit is the report each was asked to write, plus, in one
+case, an unused benchmark generator under \texttt{tools/}. Under \texttt{lib/}
+and \texttt{cmd/} the diff is empty. Those three binaries are the baseline,
+recompiled.
+
+Each arrived there by a different route, and in each case by reverting work it
+had already committed:
+
+\begin{itemize}
+\item \textbf{Codex 2} replaced the crossing counter with a Fenwick tree, then
+      measured a $17\%$ regression at 25{,}000 nodes --- the shape the prompt
+      named --- and reverted it. Its report attributes the loss to the original
+      scan being cache-friendly at these rank widths.
+\item \textbf{Codex 1\,P} parallelized adjacent-rank crossing counts with
+      OpenMP, measured $0.92\times$ at two threads, and reverted.
+\item \textbf{Codex 2\,P} did the same with pthreads, and reverted on the
+      grounds that the phase it could parallelize was $0.2$\,s against a
+      positioning phase of $1.7$ to $3.0$\,s.
+\end{itemize}
+
+We report these as deliberate outcomes, not as failed optimizations. Each run
+built something, measured it against the workload the prompt described, and
+concluded the change did not earn its place. The prompt explicitly allowed that
+outcome.
+
+They also give us something we did not design for: three binaries that are
+byte-for-byte the baseline in every line of layout code, measured in the same
+invocations as the rest, under different names and in different command
+positions. Their nine end-to-end ratios run from $1.00$ to $1.03\times$, which
+is what the floor predicts.
+
+Their per-phase entries are less reassuring. All three measure $1.07$ to
+$1.08\times$ on crossing minimization on sparse-deep and default --- above the
+$1.025$ and $1.052$ floors for those cells --- and one measures $0.93\times$ on
+coordinate assignment on default. Three independent binaries containing no
+change do not agree on a $1.07\times$ improvement by chance, so this is a
+position effect the baseline-against-itself construction does not capture: the
+floor in Table~\ref{tab:floor} compares the baseline only with copies of itself
+run in the same invocation, and cross-binary variation is evidently larger.
+
+The practical consequence for this paper is small, because every result we claim
+clears its floor several times over. But a per-phase ratio near $1.1\times$ in
+this protocol should not be read as an effect, and we would not report one as
+such.
+
+\subsection{How much of the parallel gain is threads}
+\label{sec:threads}
+
+The two parallelism-prompt runs from Claude both ship thread pools, and both
+choose their own thread count. Running them again at \texttt{GV\_THREADS=1}
+separates what their concurrency buys from what their serial changes buy.
+Table~\ref{tab:threads} reports that measurement, taken in its own
+\texttt{hyperfine} invocation with two orderings and 20 timed runs per
+configuration, so its ratios should be read against its own baseline rather than
+against Table~\ref{tab:endtoend}.
+
+\begin{table}[htbp]
+\centering
+\caption{Speedup over baseline at one thread and at the binary's own default,
+and the ratio between them. \textbf{From threads} is the default-thread mean
+divided by the one-thread mean: the part of the speedup that concurrency
+accounts for. Baseline means are $578.2$, $1368.3$ and $3038.9$\,ms.}
+\label{tab:threads}
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Binary} & \textbf{Threads} & \textbf{sparse-deep} & \textbf{default} & \textbf{dense-shallow} \\
+\midrule
+Claude 1\,P & 1        & 1.61$\times$ & 1.99$\times$ & 2.33$\times$ \\
+Claude 1\,P & default  & 1.64$\times$ & 2.09$\times$ & 2.71$\times$ \\
+\multicolumn{2}{l}{\emph{from threads}} & 1.01$\times$ & 1.05$\times$ & \textbf{1.16$\times$} \\
+\midrule
+Claude 2\,P & 1        & 1.48$\times$ & 1.37$\times$ & 1.22$\times$ \\
+Claude 2\,P & default  & 1.52$\times$ & 2.18$\times$ & 2.83$\times$ \\
+\multicolumn{2}{l}{\emph{from threads}} & 1.03$\times$ & \textbf{1.59$\times$} & \textbf{2.32$\times$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two runs are not the same kind of result, despite landing close together in
+Table~\ref{tab:endtoend}.
+
+Claude's first parallelism run is a serial optimization that also contains
+threads. At one thread it already reaches $1.61$, $1.99$ and $2.33\times$;
+enabling its threads adds $1$ to $16\%$. Its report explains why: its
+concurrency sits inside network simplex behind subtree-size thresholds of
+32{,}768 and 16{,}384 nodes, and our graphs have 5{,}000, so on this workload
+those paths rarely execute. What it gained, it gained from rewriting subtree
+relabelling as array operations.
+
+Claude's second parallelism run is the opposite. At one thread it is the weaker
+of the two on every graph. With threads it becomes the fastest binary we
+measured, and on dense-shallow concurrency accounts for $2.32\times$ of its
+$2.83\times$. Its threading is in \texttt{transpose}, with a 2{,}000-node
+threshold that our graphs clear, and \texttt{transpose} is most of crossing
+minimization, which is $64.8\%$ of dense-shallow.
+
+On sparse-deep neither gains from threads ($1.01$ and $1.03\times$). Crossing
+minimization is $12.4\%$ of that shape and the network-simplex subtrees are
+small, so on that graph both are serial results.
+
+This is the measurement that decides how the parallelism prompt should be
+described. It produced two runs that both look like parallel wins end to end,
+and only one of them is.
 
 \subsection{Correctness}
 
