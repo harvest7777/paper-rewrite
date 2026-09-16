@@ -302,32 +302,19 @@ such.
 The two parallelism-prompt runs from Claude both ship thread pools, and both
 choose their own thread count. Running them again at \texttt{GV\_THREADS=1}
 separates what their concurrency buys from what their serial changes buy.
-Table~\ref{tab:threads} reports that measurement, taken in its own
+Figure~\ref{fig:threads} reports that measurement, taken in its own
 \texttt{hyperfine} invocation with two orderings and 20 timed runs per
-configuration, so its ratios should be read against its own baseline rather than
-against Table~\ref{tab:endtoend}.
+configuration, so its ratios should be read against its own baseline ($578.2$,
+$1368.3$ and $3038.9$\,ms) rather than against Table~\ref{tab:endtoend}.
 
-\begin{table}[htbp]
+\begin{figure}[htbp]
 \centering
-\caption{Speedup over baseline at one thread and at the binary's own default,
-and the ratio between them. \textbf{From threads} is the default-thread mean
-divided by the one-thread mean: the part of the speedup that concurrency
-accounts for. Baseline means are $578.2$, $1368.3$ and $3038.9$\,ms.}
-\label{tab:threads}
-\begin{tabular}{llrrr}
-\toprule
-\textbf{Binary} & \textbf{Threads} & \textbf{sparse-deep} & \textbf{default} & \textbf{dense-shallow} \\
-\midrule
-Claude 1\,P & 1        & 1.61$\times$ & 1.99$\times$ & 2.33$\times$ \\
-Claude 1\,P & default  & 1.64$\times$ & 2.09$\times$ & 2.71$\times$ \\
-\multicolumn{2}{l}{\emph{from threads}} & 1.01$\times$ & 1.05$\times$ & \textbf{1.16$\times$} \\
-\midrule
-Claude 2\,P & 1        & 1.48$\times$ & 1.37$\times$ & 1.22$\times$ \\
-Claude 2\,P & default  & 1.52$\times$ & 2.18$\times$ & 2.83$\times$ \\
-\multicolumn{2}{l}{\emph{from threads}} & 1.03$\times$ & \textbf{1.59$\times$} & \textbf{2.32$\times$} \\
-\bottomrule
-\end{tabular}
-\end{table}
+\includegraphics[width=\textwidth]{figures/fig5_thread_scaling.pdf}
+\caption{Each binary at one thread and at its own default, as speedup over
+baseline. The label above each pair is the default-thread mean divided by the
+one-thread mean --- the part of the speedup that concurrency accounts for.}
+\label{fig:threads}
+\end{figure}
 
 The two runs are not the same kind of result, despite landing close together in
 Table~\ref{tab:endtoend}.

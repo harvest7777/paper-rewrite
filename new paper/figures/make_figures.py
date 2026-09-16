@@ -191,4 +191,57 @@ fig.tight_layout(rect=(0, 0, 1, 0.87))
 fig.suptitle("Per-phase speedup over baseline, by binary.", y=0.99)
 save(fig, "fig4_phase_speedup")
 
+# ---------------------------------------------------------------- fig 5
+# What the threads actually buy. Same binaries at one thread and at their own
+# default; the gap between the pair is the part concurrency accounts for.
+PARALLEL = ["claude_parallel", "claude_parallel_2"]
+SERIAL_TONE = "#c3ccd8"
+
+
+def thread_scaling(topology):
+    """-> {binary: {"1": [ms, ...], "def": [ms, ...]}} from thread-scaling/."""
+    pooled = defaultdict(lambda: defaultdict(list))
+    pattern = os.path.join(RESULTS, "thread-scaling",
+                           f"{topology}.gv-threads-perm*.json")
+    for path in glob.glob(pattern):
+        for row in json.load(open(path))["results"]:
+            m = re.search(r"binaries/([^/]+)/", row["command"])
+            if not m:
+                continue
+            key = "1" if "GV_THREADS=1" in row["command"] else "def"
+            pooled[m.group(1)][key] += [t * 1000 for t in row["times"]]
+    return pooled
+
+
+TS = {t: thread_scaling(t) for t in TOPOLOGIES}
+
+if all(TS[t].get("timestamped") for t in TOPOLOGIES):
+    fig, axes = plt.subplots(1, 3, figsize=(8.4, 3.0), sharey=True)
+    width = 0.34
+    for ax, topo in zip(axes, TOPOLOGIES):
+        base = st.mean(TS[topo]["timestamped"]["def"])
+        for k, b in enumerate(PARALLEL):
+            one = base / st.mean(TS[topo][b]["1"])
+            dflt = base / st.mean(TS[topo][b]["def"])
+            ax.bar(k - width / 2, one, width=width, color=SERIAL_TONE,
+                   zorder=2, label="1 thread" if k == 0 else None)
+            ax.bar(k + width / 2, dflt, width=width, color=COLOR[b], zorder=2,
+                   label="default threads" if k == 0 else None)
+            ax.text(k, max(one, dflt) + 0.08, f"{dflt / one:.2f}$\\times$",
+                    ha="center", fontsize=8, fontweight="bold")
+        ax.axhline(1.0, color="#14181f", lw=1, ls="--", zorder=3)
+        ax.set_xticks(range(len(PARALLEL)))
+        ax.set_xticklabels([LABEL[b] for b in PARALLEL], fontsize=8)
+        ax.set_title(NICE[topo].split("\n")[0])
+        ax.set_ylim(0, 3.4)
+    axes[0].set_ylabel("speedup over baseline")
+    axes[0].legend(frameon=False, fontsize=8, loc="upper left")
+    fig.tight_layout(rect=(0, 0, 1, 0.86))
+    fig.suptitle("The label above each pair is what the threads add: almost "
+                 "nothing for one binary,\nand most of the result for the other",
+                 y=0.99, fontsize=9)
+    save(fig, "fig5_thread_scaling")
+else:
+    print("  skipped fig5: no thread-scaling data")
+
 print("\ndone.")

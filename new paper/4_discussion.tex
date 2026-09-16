@@ -38,7 +38,7 @@ That choice has consequences we can measure. Claude's first parallelism run put
 its concurrency behind subtree-size thresholds of 32{,}768 and 16{,}384 nodes,
 tuned on graphs where network simplex dominates. On our graphs those paths
 almost never execute, and its threads contribute between $1$ and $16\%$
-(Table~\ref{tab:threads}) --- it scores well on the strength of a serial rewrite
+(Figure~\ref{fig:threads}) --- it scores well on the strength of a serial rewrite
 that happens to travel. Claude's second parallelism run put its concurrency in
 \texttt{transpose} behind a 2{,}000-node threshold, which our graphs clear, and
 its threads contribute up to $2.32\times$.
