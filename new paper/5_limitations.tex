@@ -3,15 +3,59 @@
 
 We state these plainly because several of them bound the conclusions above.
 
-\paragraph{One run per agent.}
-Each agent was invoked once. Agent behaviour is stochastic, so we cannot say
-whether the ordering we observed is stable or whether a second invocation of
-either would find a different target. This is the single weakest point in the
-study, and it means our results describe two particular runs rather than two
-systems.
+\paragraph{Two runs per prompt is still a small sample.}
+Each agent ran twice under each prompt. That is enough to show the outcome moves
+--- Claude's two base-prompt runs differ by more than some agent-to-agent gaps,
+and Codex's differ in whether any code shipped at all --- but not enough to
+estimate how often either outcome occurs. Two runs can show that a single run is
+not characteristic. They cannot tell you what is.
 
-\paragraph{Synthetic graphs only.}
+\paragraph{Our Codex result rests on one shipping run.}
+Three of Codex's four runs shipped no layout code, so every Codex speedup in
+this paper comes from a single run. We can say what that run achieved and what
+the other three decided; we cannot say what a typical Codex result looks like,
+because we have one sample of it.
+
+\paragraph{Thread counts were barely explored.}
+The main measurements give each binary whatever thread count it chooses for
+itself, which is what a user would get, but means the two threaded binaries are
+measured at different widths (all cores against performance cores only).
+Section~\ref{sec:threads} re-measures them at one thread and at their default,
+end to end only. We did not sweep thread counts, measure per-phase scaling, or
+test on a machine with a different core mix, so we cannot say where either
+design stops scaling or how it behaves when cores are contended.
+
+\paragraph{We have not verified the absence of data races.}
+Four of the binaries we measured create threads. Our evidence that they are safe
+is byte-identical output at one, two, eight and default threads across all 260
+test graphs --- 2{,}080 comparisons with no mismatch --- plus the safety
+arguments in the agents' own reports. That is consistent with race-freedom and
+is not proof of it. Both Claude parallelism runs report that ThreadSanitizer
+could not be made to run on this machine, and we did not run one either. A race
+that never manifests in these runs on this hardware would not appear in any
+number we report.
+
+\paragraph{Synthetic graphs at one node count.}
 All three shapes come from the same generator, which produces uniform rank
-widths and constant fanout. Real inputs to \texttt{dot} are irregular in both.
-A generator also encodes assumptions about the workload that do not show up in
-aggregate timings, and we cannot rule out ones we have not noticed.
+widths and constant fanout, and all have 5{,}000 nodes. Real inputs to
+\texttt{dot} are irregular in both. Every agent generated its own test graphs and
+every one chose larger sizes than ours, up to 25{,}000 nodes; at least one run's
+concurrency is gated behind subtree-size thresholds our graphs never reach
+(Section~\ref{sec:threads}). Our numbers therefore describe these binaries on
+this workload, and a larger benchmark would likely rank them differently.
+
+\paragraph{The noise floor understates cross-binary variation.}
+Section~\ref{sec:noship} shows three binaries containing no layout change
+measuring up to $1.08\times$ on a phase whose floor we computed as
+$1.03$--$1.05\times$. The floor is built from the baseline against copies of
+itself, and evidently does not capture everything that varies between separately
+named commands in one invocation. Every result we claim clears its floor several
+times over, but a per-phase ratio near $1.1\times$ in this protocol should not be
+read as an effect.
+
+\paragraph{One machine, one toolchain, one point in time.}
+Every measurement is from a single Apple M4 Pro running macOS 26.5.2 and Apple
+Clang 17. The wins the agents found are largely memory-hierarchy wins, and their
+size will differ on a machine with a different cache hierarchy or core mix. The
+agents themselves are moving targets: these are specific model versions at
+specific dates, and nothing here predicts what the same prompt produces later.
