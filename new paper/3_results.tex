@@ -357,15 +357,35 @@ and only one of them is.
 
 \subsection{Correctness}
 
-Both binaries produce \texttt{dot -Tdot} output byte-identical to the baseline
-on every evaluation graph, with instrumentation both enabled and disabled.
+All eight binaries produce \texttt{dot -Tdot} output byte-identical to the
+baseline on every evaluation graph, with instrumentation both enabled and
+disabled: 48 comparisons, no differences.
 
-We also ran the 260 graphs in GraphViz's own test suite through both binaries
-and compared against the baseline byte for byte. Both agents changed
-\texttt{mincross.c}, which only \texttt{dot} uses; Claude also changed
-\texttt{ns.c}, which \texttt{neato} reaches as well, so we checked both
-engines. All 1{,}040 comparisons are identical, with matching exit codes.
+We also ran the 260 graphs in GraphViz's own test suite through the five
+binaries that shipped layout code. Every run changed \texttt{mincross.c}, which
+only \texttt{dot} uses; the four Claude runs also changed \texttt{ns.c}, which
+\texttt{neato} reaches as well, so we checked both engines. All 2{,}600
+comparisons are identical, with matching exit codes and nothing skipped. We do
+not report \texttt{fdp} or \texttt{circo}: the baseline \texttt{fdp} is not
+reproducible against itself on these inputs, so byte comparison is meaningless
+for it, and baseline \texttt{circo} does not finish one test graph within an
+hour.
 
-Reading the diffs against the prompt's disallowed shortcuts found no reduced
-iteration counts, early exits, input special-casing or modified tests, and no
-concurrency of any kind.
+Because four of the binaries create threads, byte-identity at one thread count
+is not sufficient. We repeated the whole test-suite comparison for both threaded
+binaries at \texttt{GV\_THREADS} of 1, 2 and 8 and at their own default:
+2{,}080 further comparisons, all identical. Output does not depend on thread
+count in anything we ran, which is evidence for the agents' determinism
+arguments but not a proof of race-freedom --- see Section~\ref{sec:limitations}.
+
+The remaining three binaries need no such check. Their layout sources are
+identical to the baseline's (Section~\ref{sec:noship}), so their output is
+identical by construction; they are nonetheless included in the 48 comparisons
+above.
+
+Reading all eight diffs against the prompt's disallowed shortcuts found no
+reduced iteration counts, early exits, input special-casing, cached layout
+results or modified tests. Four binaries do introduce concurrency, which the
+parallelism prompt asked for and which the same prompt required to leave output
+unchanged; the byte-identity results above are what we have to show for that
+requirement.
