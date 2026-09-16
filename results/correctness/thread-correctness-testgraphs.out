@@ -1,0 +1,10 @@
+claude_parallel      GV_THREADS=1        identical  260   differing   0   skipped   0
+claude_parallel      GV_THREADS=2        identical  260   differing   0   skipped   0
+claude_parallel      GV_THREADS=8        identical  260   differing   0   skipped   0
+claude_parallel      GV_THREADS=default  identical  260   differing   0   skipped   0
+claude_parallel_2    GV_THREADS=1        identical  260   differing   0   skipped   0
+claude_parallel_2    GV_THREADS=2        identical  260   differing   0   skipped   0
+claude_parallel_2    GV_THREADS=8        identical  260   differing   0   skipped   0
+claude_parallel_2    GV_THREADS=default  identical  260   differing   0   skipped   0
+
+[exited with code 0]

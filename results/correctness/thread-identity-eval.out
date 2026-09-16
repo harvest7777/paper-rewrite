@@ -1,0 +1,40 @@
+   claude_parallel    5000-sparse-deep.gv GV_THREADS=1        3/3 identical
+   claude_parallel    5000-sparse-deep.gv GV_THREADS=2        3/3 identical
+   claude_parallel    5000-sparse-deep.gv GV_THREADS=4        3/3 identical
+   claude_parallel    5000-sparse-deep.gv GV_THREADS=8        3/3 identical
+   claude_parallel    5000-sparse-deep.gv GV_THREADS=12       3/3 identical
+   claude_parallel    5000-sparse-deep.gv GV_THREADS=default  3/3 identical
+   claude_parallel_2  5000-sparse-deep.gv GV_THREADS=1        3/3 identical
+   claude_parallel_2  5000-sparse-deep.gv GV_THREADS=2        3/3 identical
+   claude_parallel_2  5000-sparse-deep.gv GV_THREADS=4        3/3 identical
+   claude_parallel_2  5000-sparse-deep.gv GV_THREADS=8        3/3 identical
+   claude_parallel_2  5000-sparse-deep.gv GV_THREADS=12       3/3 identical
+   claude_parallel_2  5000-sparse-deep.gv GV_THREADS=default  3/3 identical
+   claude_parallel    5000-default.gv  GV_THREADS=1        3/3 identical
+   claude_parallel    5000-default.gv  GV_THREADS=2        3/3 identical
+   claude_parallel    5000-default.gv  GV_THREADS=4        3/3 identical
+   claude_parallel    5000-default.gv  GV_THREADS=8        3/3 identical
+   claude_parallel    5000-default.gv  GV_THREADS=12       3/3 identical
+   claude_parallel    5000-default.gv  GV_THREADS=default  3/3 identical
+   claude_parallel_2  5000-default.gv  GV_THREADS=1        3/3 identical
+   claude_parallel_2  5000-default.gv  GV_THREADS=2        3/3 identical
+   claude_parallel_2  5000-default.gv  GV_THREADS=4        3/3 identical
+   claude_parallel_2  5000-default.gv  GV_THREADS=8        3/3 identical
+   claude_parallel_2  5000-default.gv  GV_THREADS=12       3/3 identical
+   claude_parallel_2  5000-default.gv  GV_THREADS=default  3/3 identical
+   claude_parallel    5000-dense-shallow.gv GV_THREADS=1        3/3 identical
+   claude_parallel    5000-dense-shallow.gv GV_THREADS=2        3/3 identical
+   claude_parallel    5000-dense-shallow.gv GV_THREADS=4        3/3 identical
+   claude_parallel    5000-dense-shallow.gv GV_THREADS=8        3/3 identical
+   claude_parallel    5000-dense-shallow.gv GV_THREADS=12       3/3 identical
+   claude_parallel    5000-dense-shallow.gv GV_THREADS=default  3/3 identical
+   claude_parallel_2  5000-dense-shallow.gv GV_THREADS=1        3/3 identical
+   claude_parallel_2  5000-dense-shallow.gv GV_THREADS=2        3/3 identical
+   claude_parallel_2  5000-dense-shallow.gv GV_THREADS=4        3/3 identical
+   claude_parallel_2  5000-dense-shallow.gv GV_THREADS=8        3/3 identical
+   claude_parallel_2  5000-dense-shallow.gv GV_THREADS=12       3/3 identical
+   claude_parallel_2  5000-dense-shallow.gv GV_THREADS=default  3/3 identical
+TOTAL comparisons: 108   differing: 0
+ALL-DONE
+
+[exited with code 0]

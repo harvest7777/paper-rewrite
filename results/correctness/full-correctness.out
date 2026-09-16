@@ -1,0 +1,15 @@
+== dot  compared 260 graphs, skipped 0 the baseline could not reproduce
+   claude               identical  260   differing   0
+   claude_2             identical  260   differing   0
+   claude_parallel      identical  260   differing   0
+   claude_parallel_2    identical  260   differing   0
+   codex                identical  260   differing   0
+== neato  compared 260 graphs, skipped 0 the baseline could not reproduce
+   claude               identical  260   differing   0
+   claude_2             identical  260   differing   0
+   claude_parallel      identical  260   differing   0
+   claude_parallel_2    identical  260   differing   0
+   codex                identical  260   differing   0
+ALL-DONE
+
+[exited with code 0]
