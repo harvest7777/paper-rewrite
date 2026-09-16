@@ -2,3 +2,4 @@ sandboxes/
 binaries/
 builds/
 .venv*
+__pycache__/
