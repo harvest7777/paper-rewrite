@@ -22,9 +22,28 @@ import matplotlib.pyplot as plt
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS = os.path.abspath(os.path.join(HERE, "..", "..", "results"))
 
-BINARIES = ["timestamped", "claude", "codex"]
-LABEL = {"timestamped": "baseline", "claude": "claude", "codex": "codex"}
-COLOR = {"timestamped": "#2a78d6", "claude": "#eb6834", "codex": "#1baf7a"}
+BINARIES = ["timestamped",
+            "claude", "claude_2", "claude_parallel", "claude_parallel_2",
+            "codex", "codex_2", "codex_parallel", "codex_parallel_2"]
+AGENTS = [b for b in BINARIES if b != "timestamped"]
+
+
+def _label(b):
+    if b == "timestamped":
+        return "baseline"
+    return b.replace("_parallel", " par").replace("_2", " 2")
+
+
+LABEL = {b: _label(b) for b in BINARIES}
+COLOR = {"timestamped": "#2a78d6",
+         "claude": "#eb6834", "claude_2": "#f59b6b",
+         "claude_parallel": "#c14a1c", "claude_parallel_2": "#8a3411",
+         "codex": "#1baf7a", "codex_2": "#63cfa4",
+         "codex_parallel": "#0f7d55", "codex_parallel_2": "#0a5a3c"}
+
+# Longest first, so claude_parallel_2 never matches as claude.
+BIN_RE = re.compile(r"-(" + "|".join(sorted(BINARIES, key=len, reverse=True))
+                    + r")-perm")
 
 TOPOLOGIES = ["5000-sparse-deep", "5000-default", "5000-dense-shallow"]
 NICE = {"5000-sparse-deep": "sparse-deep\n10 wide, 500 layers",
@@ -60,7 +79,10 @@ def phases(topology):
     """-> {binary: {phase: [ms, ...]}} from the timed runs only."""
     out = defaultdict(lambda: defaultdict(list))
     for path in glob.glob(os.path.join(RESULTS, "phases", f"{topology}.gv-*-perm*.txt")):
-        b = re.search(r"-(timestamped|claude|codex)-perm", path).group(1)
+        m = BIN_RE.search(path)
+        if not m:
+            continue
+        b = m.group(1)
         timed = False
         for line in open(path):
             line = line.strip()
@@ -114,47 +136,54 @@ save(fig, "fig2_phase_composition")
 
 # ---------------------------------------------------------------- fig 3
 # End-to-end, all three topologies.
-fig, axes = plt.subplots(1, 3, figsize=(8.4, 2.9))
+fig, axes = plt.subplots(1, 3, figsize=(11.0, 3.4))
+runs_per_bar = 0
 for ax, topo in zip(axes, TOPOLOGIES):
-    base = st.mean(E2E[topo]["timestamped"])
-    for i, b in enumerate(BINARIES):
+    present = [b for b in BINARIES if E2E[topo].get(b)]
+    base = st.mean(E2E[topo]["timestamped"]) if E2E[topo].get("timestamped") else None
+    for i, b in enumerate(present):
         v = E2E[topo][b]
+        runs_per_bar = max(runs_per_bar, len(v))
         ax.bar(i, st.mean(v), color=COLOR[b], width=0.62, zorder=1)
         ax.scatter([i] * len(v), v, s=5, color="#14181f", alpha=0.4,
                    linewidths=0, zorder=3)
-        if b != "timestamped":
+        if base and b != "timestamped":
             ax.text(i, st.mean(v) * 0.5, f"{base/st.mean(v):.2f}x", ha="center",
-                    color="white", fontsize=10, fontweight="bold")
-    ax.set_xticks(range(3))
-    ax.set_xticklabels([LABEL[b] for b in BINARIES], fontsize=8)
+                    color="white", fontsize=8, fontweight="bold", rotation=90)
+    ax.set_xticks(range(len(present)))
+    ax.set_xticklabels([LABEL[b] for b in present], fontsize=7,
+                       rotation=45, ha="right")
     ax.set_title(NICE[topo].split("\n")[0])
 axes[0].set_ylabel("layout time (ms)")
 fig.tight_layout(rect=(0, 0, 1, 0.87))
-fig.suptitle("End-to-end layout time (bars = mean of 30 runs; dots = individual runs)",
-             y=0.99)
+fig.suptitle(f"End-to-end layout time (bars = mean of {runs_per_bar} runs; "
+             "dots = individual runs)", y=0.99)
 save(fig, "fig3_end_to_end")
 
 
 # ---------------------------------------------------------------- fig 4
 # Per-phase speedup. Claude wins four phases; Codex wins one.
-fig, axes = plt.subplots(1, 3, figsize=(8.4, 2.9), sharey=True)
-width = 0.36
+fig, axes = plt.subplots(1, 3, figsize=(11.0, 3.4), sharey=True)
 for ax, topo in zip(axes, TOPOLOGIES):
-    for k, b in enumerate(["claude", "codex"]):
+    base = PH[topo].get("timestamped")
+    present = [b for b in AGENTS if PH[topo].get(b)] if base else []
+    width = 0.8 / max(len(present), 1)
+    for k, b in enumerate(present):
         xs, ys = [], []
         for i, p in enumerate(PHASES):
-            xs.append(i + (k - 0.5) * width)
-            ys.append(st.mean(PH[topo]["timestamped"][p]) / st.mean(PH[topo][b][p]))
+            if not base.get(p) or not PH[topo][b].get(p):
+                continue
+            xs.append(i + (k - (len(present) - 1) / 2) * width)
+            ys.append(st.mean(base[p]) / st.mean(PH[topo][b][p]))
         ax.bar(xs, ys, width=width, color=COLOR[b], label=LABEL[b], zorder=2)
     ax.axhline(1.0, color="#14181f", lw=1, ls="--", zorder=3)
     ax.set_xticks(range(len(PHASES)))
     ax.set_xticklabels(PHASES, rotation=45, ha="right", fontsize=8)
     ax.set_title(NICE[topo].split("\n")[0])
 axes[0].set_ylabel("speedup over baseline")
-axes[0].legend(frameon=False, fontsize=8, loc="upper left")
+axes[0].legend(frameon=False, fontsize=7, loc="upper left", ncol=2)
 fig.tight_layout(rect=(0, 0, 1, 0.87))
-fig.suptitle("Per-phase speedup. Claude improves three phases; Codex improves one.",
-             y=0.99)
+fig.suptitle("Per-phase speedup over baseline, by binary.", y=0.99)
 save(fig, "fig4_phase_speedup")
 
 print("\ndone.")
