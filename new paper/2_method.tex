@@ -74,22 +74,26 @@ Graph generation is deterministic. Nodes are split into equal layers and each
 points at \texttt{fanout} random nodes in the next layer, which is what creates
 the crossings layout has to resolve.
 
-Node count is fixed at 5{,}000 and only the shape varies
-(Table~\ref{tab:graphs}):
+Three shapes are generated at each of two node counts, 5{,}000 and 10{,}000. The
+shape parameters --- nodes per rank and fanout --- are held fixed across sizes,
+so doubling the node count doubles the number of ranks and leaves rank width
+alone (Table~\ref{tab:graphs}):
 
 \begin{table}[htbp]
 \centering
-\caption{Evaluation graphs. All have 5{,}000 nodes.
-\textbf{Ranks:} $5{,}000 \div$ nodes-per-rank.
+\caption{Evaluation graphs: three shapes at two node counts.
+\textbf{Ranks:} nodes $\div$ nodes-per-rank.
 \textbf{Edges:} $(\text{ranks} - 1) \times \text{nodes-per-rank} \times \text{fanout}$.}
 \label{tab:graphs}
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-\textbf{Shape} & \textbf{Nodes/rank} & \textbf{Fanout} & \textbf{Ranks} & \textbf{Edges} \\
+& & & \multicolumn{2}{c}{\textbf{5{,}000 nodes}} & \multicolumn{2}{c}{\textbf{10{,}000 nodes}} \\
+\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+\textbf{Shape} & \textbf{Nodes/rank} & \textbf{Fanout} & \textbf{Ranks} & \textbf{Edges} & \textbf{Ranks} & \textbf{Edges} \\
 \midrule
-sparse-deep   & 10  & 2 & 500 & 9{,}980  \\
-default       & 100 & 3 & 50  & 14{,}700 \\
-dense-shallow & 200 & 4 & 25  & 19{,}200 \\
+sparse-deep   & 10  & 2 & 500 & 9{,}980  & 1{,}000 & 19{,}980 \\
+default       & 100 & 3 & 50  & 14{,}700 & 100     & 29{,}700 \\
+dense-shallow & 200 & 4 & 25  & 19{,}200 & 50      & 39{,}200 \\
 \bottomrule
 \end{tabular}
 \end{table}
