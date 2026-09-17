@@ -444,45 +444,62 @@ such.
 The two parallelism-prompt runs from Claude both ship thread pools, and both
 choose their own thread count. Running them again at \texttt{GV\_THREADS=1}
 separates what their concurrency buys from what their serial changes buy.
-Figure~\ref{fig:threads} reports that measurement, taken in its own
-\texttt{hyperfine} invocation with two orderings and 20 timed runs per
-configuration, so its ratios should be read against its own baseline ($578.2$,
-$1368.3$ and $3038.9$\,ms) rather than against Table~\ref{tab:endtoend}.
+Figure~\ref{fig:threads} reports that measurement at both sizes, taken in its
+own \texttt{hyperfine} invocations with two orderings and 20 timed runs per
+configuration, so its ratios should be read against its own baselines ($578.2$,
+$1368.3$, $3038.9$\,ms at 5{,}000 nodes; $1925.4$, $4406.7$, $10925.6$\,ms at
+10{,}000) rather than against Tables~\ref{tab:endtoend}
+and~\ref{tab:endtoend10k}.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig5_thread_scaling.pdf}
 \caption{Each binary at one thread and at its own default, as speedup over
-baseline. The label above each pair is the default-thread mean divided by the
-one-thread mean --- the part of the speedup that concurrency accounts for.}
+baseline, at both node counts. The label above each pair is the default-thread
+mean divided by the one-thread mean --- the part of the speedup that concurrency
+accounts for. Claude 1\,P's threads are inert at 5{,}000 nodes and contribute at
+10{,}000; Claude 2\,P's contribute wherever ranks are wide, at either size.}
 \label{fig:threads}
 \end{figure}
 
 The two runs are not the same kind of result, despite landing close together in
-Table~\ref{tab:endtoend}.
+Table~\ref{tab:endtoend}, and which one is a parallel result depends on the
+input.
 
-Claude's first parallelism run is a serial optimization that also contains
-threads. At one thread it already reaches $1.61$, $1.99$ and $2.33\times$;
-enabling its threads adds $1$ to $16\%$. Its report explains why: its
-concurrency sits inside network simplex behind subtree-size thresholds of
-32{,}768 and 16{,}384 nodes, and our graphs have 5{,}000, so on this workload
-those paths rarely execute. What it gained, it gained from rewriting subtree
-relabelling as array operations.
+At 5{,}000 nodes, Claude's first parallelism run is a serial optimization that
+also contains threads. At one thread it already reaches $1.61$, $1.99$ and
+$2.33\times$; enabling its threads adds $1$ to $16\%$. Its report explains why:
+its concurrency sits inside network simplex behind subtree-size thresholds of
+32{,}768 and 16{,}384 nodes, and those paths rarely execute on a 5{,}000-node
+graph. What it gained, it gained from rewriting subtree relabelling as array
+operations.
 
-Claude's second parallelism run is the opposite. At one thread it is the weaker
-of the two on every graph. With threads it becomes the fastest binary we
-measured, and on dense-shallow concurrency accounts for $2.32\times$ of its
-$2.83\times$. Its threading is in \texttt{transpose}, with a 2{,}000-node
-threshold that our graphs clear, and \texttt{transpose} is most of crossing
-minimization, which is $64.8\%$ of dense-shallow.
+At 10{,}000 nodes the same binary's threads begin to pay: $1.21$, $1.36$ and
+$1.28\times$, against $1.01$, $1.05$ and $1.16\times$ at half the size. The
+coordinate-assignment phase solves an auxiliary graph several times larger than
+the input, so at this size it crosses the thresholds the agent chose. It is
+still predominantly a serial result --- at one thread it reaches $1.91$ to
+$2.71\times$ --- but the concurrency it shipped is no longer inert.
 
-On sparse-deep neither gains from threads ($1.01$ and $1.03\times$). Crossing
-minimization is $12.4\%$ of that shape and the network-simplex subtrees are
-small, so on that graph both are serial results.
+Claude's second parallelism run is the opposite at both sizes. At one thread it
+is the weaker of the two everywhere. With threads it becomes the fastest binary
+we measured, and on dense-shallow concurrency accounts for $2.32\times$ of its
+result at 5{,}000 nodes and $2.78\times$ at 10{,}000. Its threading is in
+\texttt{transpose}, with a 2{,}000-node threshold every graph here clears, and
+\texttt{transpose} is most of crossing minimization.
+
+Sparse-deep separates the two designs most sharply, and it is the clearest
+result in this section. At 10{,}000 nodes the first run gets $1.21\times$ from
+threads there and the second gets $1.03\times$ --- the reverse of dense-shallow,
+where they get $1.28$ and $2.78\times$. The first put its concurrency in network
+simplex, which is $66.9\%$ of sparse-deep's runtime at that size; the second put
+it in crossing minimization, which is $8.2\%$. Neither design is better. Each
+pays exactly when the input makes its phase expensive, which is the same
+composition argument that governs the serial results.
 
 This is the measurement that decides how the parallelism prompt should be
-described. It produced two runs that both look like parallel wins end to end,
-and only one of them is.
+described. It produced two runs that look equally parallel end to end, and
+whether either deserves the label depends on the graph you hand it.
 
 \subsection{Correctness}
 
