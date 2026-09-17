@@ -43,14 +43,17 @@ report that ThreadSanitizer could not be made to run on this machine, and we did
 not run one either. Running these inputs under a dynamic race detector on Linux
 is the check this paper is missing.
 
-\paragraph{Synthetic graphs at one node count.}
+\paragraph{Synthetic graphs, and only two sizes.}
 All three shapes come from the same generator, which produces uniform rank
-widths and constant fanout, and all have 5{,}000 nodes. Real inputs to
-\texttt{dot} are irregular in both. Every agent generated its own test graphs and
-every one chose larger sizes than ours, up to 25{,}000 nodes; at least one run's
-concurrency is gated behind subtree-size thresholds our graphs never reach
-(Section~\ref{sec:threads}). Our numbers therefore describe these binaries on
-this workload, and a larger benchmark would likely rank them differently.
+widths and constant fanout. Real inputs to \texttt{dot} are irregular in both.
+Two node counts are enough to show that composition drifts with size and which
+direction it drifts, but not to fit a curve: we cannot say whether crossing
+minimization's share keeps falling at 50{,}000 nodes or levels off. Several
+agents generated their own test graphs at up to 25{,}000 nodes, larger than
+anything we measure, and at least one run's concurrency is gated behind
+subtree-size thresholds that our 5{,}000-node graphs never reach and our
+10{,}000-node graphs may (Section~\ref{sec:threads}). Our numbers describe these
+binaries on these workloads; a third size could reorder them again.
 
 \paragraph{The noise floor understates cross-binary variation.}
 Section~\ref{sec:noship} shows three binaries containing no layout change

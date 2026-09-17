@@ -7,11 +7,11 @@ evidently not the difficult part of the task.
 
 What separated them was breadth. Every Claude run carried on into network
 simplex, which serves two further phases, and improves three of five on every
-shape we tested --- $1.39\times$ to $2.91\times$ end-to-end. Codex's one
-shipping run optimized the phase it identified first and measures $1.03\times$
-to $1.33\times$; on the sparsest shape that optimization works, at $1.32\times$
-on its phase, and still yields nothing end-to-end because the phase is $12.4\%$
-of the workload.
+shape and size we tested --- $1.39\times$ to $4.02\times$ end-to-end. Codex's
+one shipping run optimized the phase it identified first and measures
+$1.02\times$ to $1.33\times$; on the sparsest shape that optimization works, at
+$1.32\times$ on its phase, and still yields nothing end-to-end because the phase
+is $12.4\%$ of the workload.
 
 Codex's other three runs shipped nothing, each after building a change,
 measuring it, and judging it not worth keeping. We take that at face value. It
@@ -27,8 +27,11 @@ prototype concurrency three times and ship it zero times.
 The ceiling an optimization can reach is a property of the input, not of the
 program. At fixed node count, crossing minimization ranges from $12.4\%$ to
 $64.8\%$ of layout time across our three shapes, and on the sparsest one every
-Claude run exceeds what any crossing-minimization optimization could achieve. A
-single benchmark graph cannot show this.
+Claude run exceeds what any crossing-minimization optimization could achieve.
+Doubling the node count lowers every ceiling --- to $1.08$, $1.42$ and
+$2.04\times$ --- because that phase's share shrinks as graphs grow. A single
+benchmark graph cannot show the first effect, and a single graph size cannot
+show the second.
 
 The results are modest and we have tried to report them at the size they are.
 The protocol may be the more durable contribution: balance command ordering and

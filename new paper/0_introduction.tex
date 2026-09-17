@@ -33,7 +33,7 @@ fake a win: caching layout results, special-casing inputs, and reducing the
 iteration counts that govern layout quality. No run had access to the evaluation
 harness, the graphs it uses, or any other run's sandbox. We rebuilt all eight
 results ourselves and measured them against an untouched baseline, on three
-graph shapes with the node count held fixed.
+graph shapes at two node counts.
 
 \paragraph{What we found.}
 No run failed to locate expensive code. All eight reports name the same two
@@ -42,9 +42,9 @@ coordinate assignment --- and every binary that shipped produced byte-identical
 layout output.
 
 They separate on breadth. All four Claude runs went into network simplex as well
-and improved three phases, measuring $1.39\times$ to $2.91\times$ end-to-end.
+and improved three phases, measuring $1.39\times$ to $4.02\times$ end-to-end.
 Of the four Codex runs, one improved crossing minimization only
-($1.03\times$ to $1.33\times$), and \emph{three shipped no layout code at all}:
+($1.02\times$ to $1.33\times$), and \emph{three shipped no layout code at all}:
 each built a change, measured it against the workload the prompt described,
 found it slower or unprofitable, and reverted it. Those three binaries are the
 baseline recompiled, which we report as a deliberate outcome rather than a
@@ -60,11 +60,15 @@ close together end-to-end, but re-measuring each at one thread shows only one is
 a parallel result: concurrency accounts for $2.32\times$ of one run's
 $2.83\times$ on the densest shape, and for $16\%$ of the other's.
 
-Which phase dominates is a property of the graph's \emph{shape}, not its size.
-At identical node count, crossing minimization ranges from $12.4\%$ to $64.8\%$
-of layout time, setting a different ceiling on each workload --- and on the
-sparsest one every Claude run exceeds the ceiling available to any
-crossing-minimization optimization at all.
+Which phase dominates is a property of the input, and two things move it. At
+identical node count, shape moves it hardest: crossing minimization ranges from
+$12.4\%$ to $64.8\%$ of layout time. Size moves it too, and always the same way
+--- doubling to 10{,}000 nodes cuts that phase's share on every shape and hands
+the difference to network simplex. Each combination sets a different ceiling, and
+on the sparsest shape every Claude run exceeds the ceiling available to any
+crossing-minimization optimization at all. The ceilings themselves fall with
+size, so the strategy of optimizing that one phase is worth least on the largest
+graphs.
 
 \paragraph{Contributions.}
 \begin{itemize}
@@ -72,10 +76,10 @@ crossing-minimization optimization at all.
       command ordering, which also yields an empirical noise floor from the
       baseline's own spread across orderings, and a held-out evaluation
       harness.
-\item Phase-resolved measurements of eight agent runs across three graph
-      shapes, with per-phase attribution and the shape-dependent ceiling that
-      bounds it, plus repetitions that show how far two runs of one prompt can
-      diverge.
+\item Phase-resolved measurements of eight agent runs across three graph shapes
+      at two node counts, with per-phase attribution and the input-dependent
+      ceiling that bounds it, plus repetitions that show how far two runs of one
+      prompt can diverge.
 \item A thread-resolved decomposition of the runs that shipped concurrency,
       separating what their threads buy from what their serial changes buy ---
       the measurement that decides whether a parallel-looking result is one.
