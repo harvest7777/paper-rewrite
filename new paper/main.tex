@@ -74,7 +74,10 @@ changing the agent did: Claude's two identical runs differ by $1.39\times$
 against $1.67\times$ on one graph, and Codex's differ in whether anything
 shipped. And asking for concurrency is not the same as getting it --- two Claude
 runs look equally parallel end to end, but re-running each on a single thread
-shows threads account for $2.32\times$ of one and $16\%$ of the other. How much
+shows one owes almost nothing to its threads on the smaller graphs and a third
+of its result on the larger ones, while the other owes them most of its result
+on wide graphs and nothing at all on narrow ones. Whether a parallel binary is
+really a parallel result depends on the graph you hand it. How much
 a phase is worth depends on both the shape of the graph and its size: crossing
 minimization is $12.4\%$ of layout time on one shape and $64.8\%$ on another
 with the same number of nodes, and doubling the nodes cuts its share on every

@@ -21,9 +21,12 @@ The main measurements give each binary whatever thread count it chooses for
 itself, which is what a user would get, but means the two threaded binaries are
 measured at different widths (all cores against performance cores only).
 Section~\ref{sec:threads} re-measures them at one thread and at their default,
-end to end only. We did not sweep thread counts, measure per-phase scaling, or
-test on a machine with a different core mix, so we cannot say where either
-design stops scaling or how it behaves when cores are contended.
+at both node counts, end to end only. Two points on a curve is enough to show
+that one design's concurrency switches on between 5{,}000 and 10{,}000 nodes,
+but not to locate where, and we did not instrument which parallel paths actually
+executed. We also did not sweep intermediate thread counts, measure per-phase
+scaling, or test on a machine with a different core mix, so we cannot say where
+either design stops scaling or how it behaves when cores are contended.
 
 \paragraph{We have not verified the absence of data races.}
 Two of the binaries we measured create threads. Our evidence that they are safe
