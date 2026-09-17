@@ -36,16 +36,28 @@ chose graphs larger than ours: 5{,}000 to 25{,}000 nodes, against our fixed
 
 That choice has consequences we can measure. Claude's first parallelism run put
 its concurrency behind subtree-size thresholds of 32{,}768 and 16{,}384 nodes,
-tuned on graphs where network simplex dominates. On our graphs those paths
+tuned on graphs where network simplex dominates. At 5{,}000 nodes those paths
 almost never execute, and its threads contribute between $1$ and $16\%$
-(Figure~\ref{fig:threads}) --- it scores well on the strength of a serial rewrite
-that happens to travel. Claude's second parallelism run put its concurrency in
-\texttt{transpose} behind a 2{,}000-node threshold, which our graphs clear, and
-its threads contribute up to $2.32\times$.
+(Figure~\ref{fig:threads}) --- there it scores well on the strength of a serial
+rewrite that happens to travel. Claude's second parallelism run put its
+concurrency in \texttt{transpose} behind a 2{,}000-node threshold, which even our
+smallest graphs clear, and its threads contribute up to $2.32\times$.
 
 Neither run was tuned to our benchmark; one simply guessed a workload closer to
 it. A study that reported only end-to-end numbers would have called both of them
 parallel wins.
+
+At 10{,}000 nodes the first run improves sharply --- $1.60$ to $2.38\times$ on
+sparse-deep, $2.75$ to $3.46\times$ on dense-shallow --- and its
+coordinate-assignment speedup roughly doubles. That is consistent with its
+thresholds finally being crossed, since the auxiliary graph that phase solves is
+several times the size of the input. We cannot yet claim it, because the
+thread decomposition in Figure~\ref{fig:threads} was measured at 5{,}000 nodes
+only, and the base-prompt run that ships no threads at all improves on that
+phase by just as much at the larger size. Separating the two requires running
+each parallel binary at one thread on the 10{,}000-node graphs, which we have
+not done. The honest statement is that the 5{,}000-node decomposition stands and
+the 10{,}000-node attribution is open.
 
 \subsection{Why breadth mattered: the ceiling moves with shape}
 
@@ -58,40 +70,58 @@ Table~\ref{tab:composition} shows is a property of the graph's shape.
 \caption{What optimizing crossing minimization alone can achieve, against what
 each run measured. \textbf{Ceiling:} baseline wall clock divided by (wall clock
 minus that phase's measured cost), i.e.\ the phase driven to zero. Remaining
-columns are the end-to-end speedups from Table~\ref{tab:endtoend}, carrying the
-same dagger convention. Entries above the ceiling are bold.}
+columns are the end-to-end speedups from Tables~\ref{tab:endtoend}
+and~\ref{tab:endtoend10k}, carrying the same dagger convention. Entries above
+the ceiling are bold.}
 \label{tab:ceiling}
 \small
 \begin{tabular}{lrrrrrr}
 \toprule
 \textbf{Graph} & \textbf{Ceiling} & \textbf{Claude 1} & \textbf{Claude 2} & \textbf{Claude 1\,P} & \textbf{Claude 2\,P} & \textbf{Codex 1} \\
 \midrule
+\multicolumn{7}{l}{\emph{5{,}000 nodes}} \\
 sparse-deep   & 1.12$\times$ & \textbf{1.39} & \textbf{1.67} & \textbf{1.60} & \textbf{1.47} & 1.03$^\dagger$ \\
 default       & 1.72$\times$ & 1.55 & \textbf{1.98} & \textbf{2.10} & \textbf{2.19} & 1.16 \\
 dense-shallow & 2.63$\times$ & 1.89 & 2.35 & \textbf{2.75} & \textbf{2.91} & 1.33 \\
+\midrule
+\multicolumn{7}{l}{\emph{10{,}000 nodes}} \\
+sparse-deep   & 1.08$\times$ & \textbf{1.62} & \textbf{2.53} & \textbf{2.38} & \textbf{1.89} & 1.02$^\dagger$ \\
+default       & 1.42$\times$ & \textbf{1.58} & \textbf{2.53} & \textbf{3.11} & \textbf{3.28} & 1.14 \\
+dense-shallow & 2.04$\times$ & 1.94 & \textbf{2.66} & \textbf{3.46} & \textbf{4.02} & 1.24 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Codex's one shipping run sits below the ceiling on all three shapes, as a run
-that optimized only that phase must. On sparse-deep the ceiling is
+Codex's one shipping run sits below the ceiling everywhere, as a run that
+optimized only that phase must. On sparse-deep at 5{,}000 nodes the ceiling is
 $1.12\times$, so even a perfect crossing-minimization optimization would be
 nearly invisible end-to-end. Its $1.03\times$ is not a failed optimization ---
 the change works, at $1.32\times$ on the phase --- but the phase is worth
 $12.4\%$ of that workload.
 
-Every Claude run \emph{exceeds} that ceiling on sparse-deep, which is only
-possible by improving other phases. That is the breadth argument at its
-sharpest: on that workload no amount of further work on the phase every run
-found could have matched what they did.
+Every Claude run \emph{exceeds} that ceiling on sparse-deep, at both sizes,
+which is only possible by improving other phases. That is the breadth argument
+at its sharpest: on that workload no amount of further work on the phase every
+run found could have matched what they did.
 
 The ceiling also explains why the shapes rank the runs differently. On
-dense-shallow, where crossing minimization is $64.8\%$ of the work, the ceiling
-is $2.63\times$ and only the two parallelism runs clear it --- breadth matters
-less there, because the one phase everybody found is most of the workload. On
-sparse-deep the ceiling is so low that breadth is the only thing that matters.
-A single benchmark graph would have hidden whichever of those two effects it did
-not contain.
+dense-shallow at 5{,}000 nodes, where crossing minimization is $64.8\%$ of the
+work, the ceiling is $2.63\times$ and only the two parallelism runs clear it ---
+breadth matters less there, because the one phase everybody found is most of the
+workload. On sparse-deep the ceiling is so low that breadth is the only thing
+that matters.
+
+Doubling the node count lowers every ceiling: $1.12$ to $1.08\times$, $1.72$ to
+$1.42\times$, $2.63$ to $2.04\times$. Crossing minimization is a smaller share
+of a larger graph, so the strategy of optimizing it alone is worth less exactly
+where the absolute times are worst. Three Claude runs clear the dense-shallow
+ceiling at 10{,}000 nodes where only two did at 5{,}000, and on default every
+Claude run now clears a ceiling that has dropped below what three of them
+already achieved. Breadth is not merely a way to go faster here; it is the only
+strategy whose value grows with the problem.
+
+A single benchmark graph would have hidden all of this --- and a single graph
+\emph{size} would have hidden the direction it moves in.
 
 The ceiling an optimization can reach is a property of the input, not the
 program, and a single benchmark graph cannot show that.
