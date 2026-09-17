@@ -10,6 +10,10 @@ set -e
 cd /Users/ryantran/Developer/projects/paper-rewrite
 
 SIZE="${SIZE:-5000}"
+# Result files carry this tag so a re-run lands beside the previous one instead
+# of overwriting it. It goes after perm<N>, which keeps the figure script's glob
+# matching. Override to name a run: RUN_TAG=threshold-test ./04-thread-scaling.sh
+RUN_TAG="${RUN_TAG:-$(date +%Y%m%d-%H%M)}"
 GRAPHS=(
   graphs/$SIZE-default.gv
   graphs/$SIZE-sparse-deep.gv
@@ -45,7 +49,7 @@ for graph in "${GRAPHS[@]}"; do
     done
     echo "==> $graph_name  rotation $perm/$ROTATIONS"
     hyperfine -w "$WARMUP" -r "$RUNS" \
-      --export-json "$OUT/$graph_name-threads-perm$perm.json" \
+      --export-json "$OUT/$graph_name-threads-perm$perm-$RUN_TAG.json" \
       "${commands[@]}"
   done
 done
