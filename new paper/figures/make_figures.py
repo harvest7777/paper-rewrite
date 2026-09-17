@@ -213,35 +213,49 @@ def thread_scaling(topology):
     return pooled
 
 
-TS = {t: thread_scaling(t) for t in TOPOLOGIES}
+SIZES = ["5000", "10000"]
+SHAPES = ["sparse-deep", "default", "dense-shallow"]
+TS = {f"{s}-{sh}": thread_scaling(f"{s}-{sh}") for s in SIZES for sh in SHAPES}
 
-if all(TS[t].get("timestamped") for t in TOPOLOGIES):
-    fig, axes = plt.subplots(1, 3, figsize=(8.4, 3.0), sharey=True)
+have = [t for t in TS if TS[t].get("timestamped")]
+if len(have) == len(TS):
+    fig, axes = plt.subplots(len(SIZES), len(SHAPES), figsize=(8.4, 5.4),
+                             sharey=True)
     width = 0.34
-    for ax, topo in zip(axes, TOPOLOGIES):
-        base = st.mean(TS[topo]["timestamped"]["def"])
-        for k, b in enumerate(PARALLEL):
-            one = base / st.mean(TS[topo][b]["1"])
-            dflt = base / st.mean(TS[topo][b]["def"])
-            ax.bar(k - width / 2, one, width=width, color=SERIAL_TONE,
-                   zorder=2, label="1 thread" if k == 0 else None)
-            ax.bar(k + width / 2, dflt, width=width, color=COLOR[b], zorder=2,
-                   label="default threads" if k == 0 else None)
-            ax.text(k, max(one, dflt) + 0.08, f"{dflt / one:.2f}$\\times$",
-                    ha="center", fontsize=8, fontweight="bold")
-        ax.axhline(1.0, color="#14181f", lw=1, ls="--", zorder=3)
-        ax.set_xticks(range(len(PARALLEL)))
-        ax.set_xticklabels([LABEL[b] for b in PARALLEL], fontsize=8)
-        ax.set_title(NICE[topo].split("\n")[0])
-        ax.set_ylim(0, 3.4)
-    axes[0].set_ylabel("speedup over baseline")
-    axes[0].legend(frameon=False, fontsize=8, loc="upper left")
-    fig.tight_layout(rect=(0, 0, 1, 0.86))
-    fig.suptitle("The label above each pair is what the threads add: almost "
-                 "nothing for one binary,\nand most of the result for the other",
+    for row, size in enumerate(SIZES):
+        for col, shape in enumerate(SHAPES):
+            ax = axes[row][col]
+            topo = f"{size}-{shape}"
+            base = st.mean(TS[topo]["timestamped"]["def"])
+            for k, b in enumerate(PARALLEL):
+                one = base / st.mean(TS[topo][b]["1"])
+                dflt = base / st.mean(TS[topo][b]["def"])
+                ax.bar(k - width / 2, one, width=width, color=SERIAL_TONE,
+                       zorder=2,
+                       label="1 thread" if (k == 0 and row == 0 and col == 0) else None)
+                ax.bar(k + width / 2, dflt, width=width, color=COLOR[b],
+                       zorder=2,
+                       label="default threads" if (k == 0 and row == 0 and col == 0) else None)
+                ax.text(k, max(one, dflt) + 0.10, f"{dflt / one:.2f}$\\times$",
+                        ha="center", fontsize=8, fontweight="bold")
+            ax.axhline(1.0, color="#14181f", lw=1, ls="--", zorder=3)
+            ax.set_xticks(range(len(PARALLEL)))
+            ax.set_xticklabels([LABEL[b] for b in PARALLEL], fontsize=8)
+            ax.set_ylim(0, 4.7)
+            if row == 0:
+                ax.set_title(shape)
+            if col == 0:
+                ax.set_ylabel(f"{int(size):,} nodes\nspeedup over baseline",
+                              fontsize=9)
+    axes[0][0].legend(frameon=False, fontsize=8, loc="upper left")
+    fig.tight_layout(rect=(0, 0, 1, 0.91))
+    fig.suptitle("The label above each pair is what the threads add. One design "
+                 "pays only once the\ngraph is big enough; the other pays only "
+                 "once the ranks are wide enough.",
                  y=0.99, fontsize=9)
     save(fig, "fig5_thread_scaling")
 else:
-    print("  skipped fig5: no thread-scaling data")
+    missing = sorted(set(TS) - set(have))
+    print(f"  skipped fig5: no thread-scaling data for {', '.join(missing)}")
 
 print("\ndone.")
