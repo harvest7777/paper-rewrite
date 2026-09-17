@@ -48,16 +48,23 @@ it. A study that reported only end-to-end numbers would have called both of them
 parallel wins.
 
 At 10{,}000 nodes the first run improves sharply --- $1.60$ to $2.38\times$ on
-sparse-deep, $2.75$ to $3.46\times$ on dense-shallow --- and its
-coordinate-assignment speedup roughly doubles. That is consistent with its
-thresholds finally being crossed, since the auxiliary graph that phase solves is
-several times the size of the input. We cannot yet claim it, because the
-thread decomposition in Figure~\ref{fig:threads} was measured at 5{,}000 nodes
-only, and the base-prompt run that ships no threads at all improves on that
-phase by just as much at the larger size. Separating the two requires running
-each parallel binary at one thread on the 10{,}000-node graphs, which we have
-not done. The honest statement is that the 5{,}000-node decomposition stands and
-the 10{,}000-node attribution is open.
+sparse-deep, $2.75$ to $3.46\times$ on dense-shallow --- and re-measuring it at
+one thread shows where that came from. Its threads, worth $1$ to $16\%$ at
+5{,}000 nodes, are worth $21$ to $36\%$ at 10{,}000
+(Figure~\ref{fig:threads}). The concurrency it shipped was not useless; it was
+written for graphs larger than the ones we first measured it on, and it switches
+on when the input reaches the size it was tuned for. Most of its gain is still
+serial even at 10{,}000 nodes, so the description of it as a serial optimization
+that also contains threads survives --- but only as a statement about a size
+range, not about the binary.
+
+The reverse case is sharper. On sparse-deep at 10{,}000 nodes the first run's
+threads are worth $1.21\times$ and the second run's $1.03\times$; on
+dense-shallow the same comparison is $1.28$ against $2.78\times$. One agent put
+its concurrency in network simplex and the other in crossing minimization, and
+each is rewarded exactly on the shapes where its phase is expensive. Two agents
+given the same instruction to use the idle cores produced designs whose value is
+decided by the input, not by the instruction.
 
 \subsection{Why breadth mattered: the ceiling moves with shape}
 
