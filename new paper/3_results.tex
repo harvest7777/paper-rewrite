@@ -265,6 +265,81 @@ worth less on bigger graphs, because that is the phase whose share shrinks with
 size --- the ceiling it works under drops from $2.63$ to $2.04\times$ on that
 shape.
 
+\subsection{What each run changed}
+\label{sec:changes}
+
+Table~\ref{tab:changes} summarizes each run's diff and report: where it
+changed code, what the main change was, whether and how it used threads, and
+whether the change survived to the binary we measured.
+
+\begin{table}[htbp]
+\centering
+\caption{What each run changed, from its commit history and report.
+\textbf{Concurrency:} thread model; default thread count; input-size gates
+below which the code stays serial; how output is kept independent of
+scheduling. \textbf{E2E:} smallest and largest end-to-end speedup across all
+six graphs (Tables~\ref{tab:endtoend} and~\ref{tab:endtoend10k}); for
+Codex~1 the lower end is inside the floor. \textbf{P} marks the parallelism
+prompt. NS: network simplex.}
+\label{tab:changes}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{>{\raggedright\arraybackslash}p{1.1cm}
+                >{\raggedright\arraybackslash}p{2.5cm}
+                >{\raggedright\arraybackslash}p{3.0cm}
+                >{\raggedright\arraybackslash}p{3.6cm}
+                >{\raggedright\arraybackslash}p{1.5cm}
+                >{\raggedright\arraybackslash}p{1.2cm}}
+\toprule
+\textbf{Run} & \textbf{Code changed} & \textbf{Main change} & \textbf{Concurrency} & \textbf{Outcome} & \textbf{E2E} \\
+\midrule
+Claude 1 &
+\texttt{ns.c} (\texttt{dfs\_range}, \texttt{enter\_edge}, \texttt{rerank}, \texttt{init\_graph}); \texttt{mincross.c} (\texttt{transpose\_step}) &
+NS over a flat per-node state array with cached tree neighbours; both crossing orderings counted in one pass &
+none & shipped & $1.39$--$1.94\times$ \\
+\addlinespace
+Claude 2 &
+\texttt{ns.c} (whole solver); \texttt{mincross.c} (\texttt{transpose}) &
+NS on compact index arrays with preallocated DFS stacks; crossings counted on flattened edge lists; one experiment (gap-spaced labels) reverted &
+none & shipped & $1.67$--$2.66\times$ \\
+\addlinespace
+Claude 1\,P &
+\texttt{ns.c}; \texttt{mincross.c}; new \texttt{lib/\allowbreak util/\allowbreak parallel.c} &
+NS subtree relabelling via a postorder index array; a rank's edge ends snapshotted once per transpose step &
+pthread fork-join pool; all cores (12); NS loops on subtrees $\geq$16{,}384/\allowbreak 32{,}768 nodes; mincross passes 0 and 1 run concurrently on private copies; disjoint writes and a deterministic merge &
+shipped & $1.60$--$3.46\times$ \\
+\addlinespace
+Claude 2\,P &
+\texttt{ns.c}; \texttt{mincross.c}; new \texttt{lib/\allowbreak common/\allowbreak parallel.c} &
+NS subtree relabelling via an inverse label array &
+persistent pool on C11 atomics; performance cores (8); \texttt{transpose} as a wavefront on graphs $\geq$2{,}000 nodes, with an undo log for speculative sweeps; NS scans on subtrees $\geq$16{,}384/\allowbreak 32{,}768 nodes &
+shipped & $1.47$--$4.02\times$ \\
+\addlinespace
+Codex 1 &
+\texttt{mincross.c} (\texttt{transpose\_step}, \texttt{rcross}) &
+Two crossing-pair scans fused into one; Fenwick-tree prefix sums in \texttt{rcross} &
+none & shipped & $1.02$--$1.33\times$ \\
+\addlinespace
+Codex 2 &
+\texttt{mincross.c} (\texttt{rcross}) &
+Fenwick-tree crossing counter &
+none & reverted: $17\%$ slower at 25{,}000 nodes & ${\approx}1.00\times$ \\
+\addlinespace
+Codex 1\,P &
+\texttt{mincross.c} (\texttt{ncross}) &
+Adjacent-rank crossing counts computed concurrently &
+OpenMP; private result slots summed in rank order &
+reverted: $0.92\times$ at 2 threads & ${\approx}1.00\times$ \\
+\addlinespace
+Codex 2\,P &
+\texttt{mincross.c} (\texttt{ncross}) &
+Same as Codex 1\,P &
+pthreads; same merge &
+reverted: gain confined to a small phase & ${\approx}1.00\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Per-phase attribution}
 
 Table~\ref{tab:phases} and Figure~\ref{fig:phasespeedup} break the end-to-end
