@@ -59,10 +59,10 @@ anything shipped at all. A single run of an agent does not characterize it.
 
 The parallelism prompt produced the subtlest result. Its two Claude runs land
 close together end-to-end, but re-measuring each at one thread shows they are
-not the same kind of result. One put its concurrency in crossing minimization
+not the same kind of result. One put most of its concurrency in crossing minimization
 and is rewarded on wide graphs at any size --- threads account for $2.78\times$
 of its result on the densest shape --- and not at all on narrow ones. The other
-put its concurrency in network simplex behind large size thresholds: its threads
+put most of its in network simplex behind large size thresholds: its threads
 are worth $1$ to $16\%$ at 5{,}000 nodes and $21$ to $36\%$ at 10{,}000, when
 the input finally reaches the size it was written for. Each design pays exactly
 where the input makes its phase expensive.

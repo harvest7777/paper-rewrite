@@ -440,7 +440,7 @@ $2.92\times$, with no run dominating the others on all three.
 
 One entry is worth isolating. Claude's second parallelism run manages
 $4.31\times$ on crossing minimization on dense-shallow but only $1.26\times$ on
-sparse-deep --- the widest spread any run shows on any phase. Its concurrency is
+sparse-deep --- the widest spread any run shows on any phase. Its main concurrency is
 in \texttt{transpose}, which needs rank width to have anything to divide, and
 sparse-deep is ten nodes wide.
 
@@ -544,7 +544,7 @@ input.
 At 5{,}000 nodes, Claude's first parallelism run is a serial optimization that
 also contains threads. At one thread it already reaches $1.61$, $1.99$ and
 $2.33\times$; enabling its threads adds $1$ to $16\%$. Its report explains why:
-its concurrency sits inside network simplex behind subtree-size thresholds of
+most of its concurrency sits inside network simplex behind subtree-size thresholds of
 32{,}768 and 16{,}384 nodes, and those paths rarely execute on a 5{,}000-node
 graph. What it gained, it gained from rewriting subtree relabelling as array
 operations.
@@ -559,16 +559,16 @@ $2.71\times$ --- but the concurrency it shipped is no longer inert.
 Claude's second parallelism run is the opposite at both sizes. At one thread it
 is the weaker of the two everywhere. With threads it becomes the fastest binary
 we measured, and on dense-shallow concurrency accounts for $2.32\times$ of its
-result at 5{,}000 nodes and $2.78\times$ at 10{,}000. Its threading is in
+result at 5{,}000 nodes and $2.78\times$ at 10{,}000. Its main threading is in
 \texttt{transpose}, with a 2{,}000-node threshold every graph here clears, and
 \texttt{transpose} is most of crossing minimization.
 
 Sparse-deep separates the two designs most sharply, and it is the clearest
 result in this section. At 10{,}000 nodes the first run gets $1.21\times$ from
 threads there and the second gets $1.03\times$ --- the reverse of dense-shallow,
-where they get $1.28$ and $2.78\times$. The first put its concurrency in network
+where they get $1.28$ and $2.78\times$. The first put most of its concurrency in network
 simplex, which is $66.9\%$ of sparse-deep's runtime at that size; the second put
-it in crossing minimization, which is $8.2\%$. Neither design is better. Each
+most of its in crossing minimization, which is $8.2\%$. Neither design is better. Each
 pays exactly when the input makes its phase expensive, which is the same
 composition argument that governs the serial results.
 

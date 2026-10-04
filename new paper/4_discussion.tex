@@ -36,11 +36,11 @@ No run could see our evaluation graphs, so each generated its own. Their graphs
 ranged from 5{,}000 to 25{,}000 nodes, against our 5{,}000 and 10{,}000.
 
 That choice has consequences we can measure. Claude's first parallelism run put
-its concurrency behind subtree-size thresholds of 32{,}768 and 16{,}384 nodes,
+most of its concurrency behind subtree-size thresholds of 32{,}768 and 16{,}384 nodes,
 tuned on graphs where network simplex dominates. At 5{,}000 nodes those paths
 almost never execute, and its threads contribute between $1$ and $16\%$
 (Figure~\ref{fig:threads}) --- there it scores well on the strength of a serial
-rewrite that happens to travel. Claude's second parallelism run put its
+rewrite that happens to travel. Claude's second parallelism run put most of its
 concurrency in \texttt{transpose} behind a 2{,}000-node threshold, which even our
 smallest graphs clear, and its threads contribute up to $2.32\times$.
 
@@ -61,9 +61,9 @@ range, not about the binary.
 
 The reverse case is sharper. On sparse-deep at 10{,}000 nodes the first run's
 threads are worth $1.21\times$ and the second run's $1.03\times$; on
-dense-shallow the same comparison is $1.28$ against $2.78\times$. One agent put
-its concurrency in network simplex and the other in crossing minimization, and
-each is rewarded exactly on the shapes where its phase is expensive. Two agents
+dense-shallow the same comparison is $1.28$ against $2.78\times$. One run put
+most of its concurrency in network simplex and the other in crossing minimization, and
+each is rewarded exactly on the shapes where its phase is expensive. Two runs
 given the same instruction to use the idle cores produced designs whose value is
 decided by the input, not by the instruction.
 
