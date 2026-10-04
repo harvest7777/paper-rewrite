@@ -7,7 +7,7 @@
 # That subdirectory is NOT matched by make_figures.py's globs, so these runs
 # stay out of the paper's pooled end-to-end data.
 set -e
-cd /Users/ryantran/Developer/projects/paper-rewrite
+cd "$(dirname "$0")"
 
 SIZE="${SIZE:-5000}"
 # Result files carry this tag so a re-run lands beside the previous one instead
