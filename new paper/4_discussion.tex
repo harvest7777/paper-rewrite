@@ -22,9 +22,11 @@ seeing different things. Both Codex parallelism runs argue that
 \texttt{transpose} cannot be parallelized without changing output, because each
 accepted swap changes the state the next comparison reads, and that network
 simplex pivots are inherently sequential. Both Claude parallelism runs
-parallelized exactly that code anyway --- one with a speculative sweep schedule
-and an undo log, the other by running two independent ordering passes on private
-copies --- and produced byte-identical output. The disagreement is not about
+worked around those dependencies instead. One parallelized \texttt{transpose}
+itself, with a speculative sweep schedule and an undo log. The other left
+\texttt{transpose} serial, judging that most speculation would fail, and ran
+crossing minimization's two independent initial passes concurrently on private
+copies. Both produced byte-identical output. The disagreement is not about
 where the time goes. It is about whether a dependency is a hard barrier or an
 engineering problem.
 
