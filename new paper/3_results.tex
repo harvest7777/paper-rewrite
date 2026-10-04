@@ -246,14 +246,14 @@ $1.98$, and $1.89$ against $2.35$ --- the second run is faster on every shape,
 by more than the gap between some agents. Codex's two base-prompt runs differ
 more sharply still: one shipped two changes, the other shipped nothing.
 
-At 10{,}000 nodes every binary that improved anything improves by more
+At 10{,}000 nodes every run that optimized network simplex improves by more
 (Table~\ref{tab:endtoend10k}), which follows from the composition shift: the
 phases these runs optimized are a larger share of a larger graph. The ordering
 does not simply scale, though. Claude's second parallelism run is the fastest
 binary we measured on dense-shallow at $4.02\times$, and the \emph{slowest} of
 the four Claude runs on sparse-deep at $1.89\times$, where crossing
 minimization --- the phase its concurrency targets --- is $8.2\%$ of the work.
-The two base-prompt Claude runs swap places by size as well: they are $1.39$
+The gap between the two base-prompt Claude runs widens with size: they are $1.39$
 against $1.67$ at 5{,}000 on sparse-deep and $1.62$ against $2.53$ at
 10{,}000.
 
