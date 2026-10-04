@@ -4,7 +4,7 @@
 # binary once, comparing -Tdot output byte for byte.
 # Written for bash 3.2 (macOS): indexed arrays only, no associative arrays.
 set -u
-cd /Users/ryantran/Developer/projects/paper-rewrite
+cd "$(dirname "$0")/../.."
 GRAPHS=sandboxes/timestamped/graphviz/tests/graphs
 BINARIES=(claude claude_2 claude_parallel claude_parallel_2 codex)
 ENGINES=(dot neato)

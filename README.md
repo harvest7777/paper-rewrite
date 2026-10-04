@@ -121,9 +121,8 @@ matching file in `results/`, so move the committed results aside first if you
 want figures from a fresh run alone.
 
 The correctness sweeps reported in the paper are archived with their output in
-`results/correctness/`. Those three scripts `cd` to the original author's home
-directory, so edit their `cd` line to point at this repository before running
-them.
+`results/correctness/`. Each script changes to the repository root itself, so
+run it by path, for example `results/correctness/full-correctness.sh`.
 
 ## Layout
 

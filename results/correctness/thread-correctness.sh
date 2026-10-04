@@ -3,7 +3,7 @@
 # Compares dot -Tdot against the baseline for every tests/graphs/*.gv, at
 # GV_THREADS=1, 2, 8 and at the binary's own default.
 set -e
-cd /Users/ryantran/Developer/projects/paper-rewrite
+cd "$(dirname "$0")/../.."
 
 BASELINE=binaries/timestamped/bin/dot
 GRAPHS=sandboxes/timestamped/graphviz/tests/graphs

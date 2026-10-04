@@ -3,7 +3,7 @@
 # enough to actually execute the parallel code paths (unlike tests/graphs).
 # bash 3.2 safe: indexed arrays only.
 set -u
-cd /Users/ryantran/Developer/projects/paper-rewrite
+cd "$(dirname "$0")/../.."
 GRAPHS=(graphs/5000-sparse-deep.gv graphs/5000-default.gv graphs/5000-dense-shallow.gv)
 BINARIES=(claude_parallel claude_parallel_2)
 THREADS=(1 2 4 8 12 default)
