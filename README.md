@@ -150,3 +150,51 @@ a run's full diff, use `git -C sandboxes/<name>/graphviz diff 23b06521 agent-wor
   online core; the other uses the performance cores on Apple Silicon and every
   online core elsewhere. Thread counts, and so timings, will differ on other
   hardware. Set `GV_THREADS` to fix the count.
+
+## Handoff: next steps
+
+### Race detection with ThreadSanitizer (not done)
+
+Two binaries create threads: `claude_parallel` and `claude_parallel_2`. The
+paper's evidence that they are race-free is byte-identical output across
+thread counts, which is consistent with race-freedom but does not prove it.
+Reviewers asked for a ThreadSanitizer (TSan) run. It was not done before
+handoff because of the deadline: it means rebuilding the binaries with TSan and
+re-running the correctness checks on them. Both Claude parallel runs also
+report that they could not get TSan working on the original Mac, so plan to do
+this on Linux.
+
+What needs to happen:
+
+1. Rebuild `claude_parallel` and `claude_parallel_2` with TSan into **separate**
+   prefixes, so the measured binaries stay untouched. The build is the one in
+   `01-build-binaries.sh`, plus:
+
+   ```bash
+   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+   -DCMAKE_C_FLAGS="-fsanitize=thread -fno-omit-frame-pointer" \
+   -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread" \
+   -DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=thread"
+   ```
+
+   with `-B builds/<name>-tsan` and
+   `-DCMAKE_INSTALL_PREFIX=binaries/<name>-tsan`.
+2. Run both TSan binaries on the six evaluation graphs in `graphs/` at
+   `GV_THREADS` = 1, 2, 4, 8, 12 and the default, with
+   `TSAN_OPTIONS="halt_on_error=1"`. These are the inputs big enough to
+   reach the parallel code; most of `tests/graphs` falls below the size
+   thresholds that turn threading on. Size gates are listed in Table 7 of the
+   paper.
+3. Repeat each configuration several times, since races depend on timing.
+4. Report the result in the limitations section of the paper ("We have not
+   verified the absence of data races"), and update or remove that paragraph.
+
+TSan slows execution by roughly 5–15×, so TSan binaries must never be used
+for timing.
+
+### Also still open from the same review comment
+
+The review also asked for both threaded binaries measured at the **same**
+thread counts (1, 2, 4, 8, 12), with per-phase speedup, parallel efficiency,
+overhead and memory use. The paper only measures each at one thread and at its
+own default (`04-thread-scaling.sh`). Doing this means new benchmark runs.
